@@ -198,7 +198,7 @@ script:
     sequence:
       - variables:
           alias: set defaults and Define AI agent #look up IDs by calling 'Conversation: Process' service under developer tools
-          who: "{{who | default('brian') }}"
+          who: "{{who | default('') }}"
           where: "{{where | default('') }}"
           what: "{{what | default('') }}"
           type: "{{type | default('txt') }}"
@@ -769,6 +769,7 @@ script:
     sequence:
       - variables:
           peoplelist: "{{states.person | map(attribute='object_id') | list}}"
+          who: "{{who | default('brian') }}"
       - repeat:
           count: "{{peoplelist| count}}"
           sequence:
