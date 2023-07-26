@@ -2,26 +2,6 @@ today_holiday:
   name: Holiday
   icon: mdi:party-popper
 
-melody_arming:
-  name: Alarm Arming Melody
-  icon: mdi:music
-
-melody_pending:
-  name: Alarm Pending Melody
-  icon: mdi:music
-
-melody_armed:
-  name: Alarm Armed Melody
-  icon: mdi:music
-
-melody_disarmed:
-  name: Alarm Disarmed Melody
-  icon: mdi:music
-
-melody_door_chime:
-  name: Door Chime Melody
-  icon: mdi:music
-
 alexa_actionable_notification:
   name: Alexa Actionable Notification Holder
   max: 255

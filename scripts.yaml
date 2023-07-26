@@ -1,645 +1,119 @@
 play_sleep_music:
   alias: Cast sleep music
   sequence:
-  - service: script.jarvis_script
-    data:
-      where: bedroomspeaker
-      type: speak
-      include: <bedtime>
-  - type: turn_off
-    device_id: 83fb8e68db50634011416b31bf0a52bb
-    entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
-    domain: switch
-  - service: light.turn_off
-    data: {}
-    target:
-      entity_id: light.smart_bulb
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - if:
-    - condition: not
-      conditions:
-      - condition: state
-        entity_id: media_player.bedroom_tv
-        state: playing
-    then:
-    - service: media_player.play_media
+    - service: script.jarvis_script
       data:
-        media_content_type: cast
-        media_content_id: ' { "app_name": "youtube", "media_id": "oT9Ycli_z4o" }'
-        enqueue: replace
+        where: bedroomspeaker
+        type: speak
+        include: <bedtime>
+    - type: turn_off
+      device_id: 83fb8e68db50634011416b31bf0a52bb
+      entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
+      domain: switch
+    - service: light.turn_off
+      data: {}
       target:
-        entity_id: media_player.bedroom_tv
-    - service: media_player.volume_set
-      data:
-        volume_level: 0.01
-      target:
-        entity_id: media_player.bedroom_tv
+        entity_id: light.smart_bulb
     - delay:
         hours: 0
         minutes: 0
-        seconds: 30
+        seconds: 1
         milliseconds: 0
-    - service: media_player.media_seek
+    - if:
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: media_player.bedroom_tv
+              state: playing
+      then:
+        - service: media_player.play_media
+          data:
+            media_content_type: cast
+            media_content_id: ' { "app_name": "youtube", "media_id": "oT9Ycli_z4o" }'
+            enqueue: replace
+          target:
+            entity_id: media_player.bedroom_tv
+        - service: media_player.volume_set
+          data:
+            volume_level: 0.01
+          target:
+            entity_id: media_player.bedroom_tv
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 30
+            milliseconds: 0
+        - service: media_player.media_seek
+          data:
+            seek_position: 1790
+          target:
+            entity_id: media_player.bedroom_tv
+        - service: timer.start
+          data: {}
+          target:
+            entity_id: timer.sleep_music_turn_off_timer
+    - service: media_player.play_media
       data:
-        seek_position: 1790
+        media_content_type: custom
+        media_content_id: turn off the screen
       target:
-        entity_id: media_player.bedroom_tv
-    - service: timer.start
-      data: {}
-      target:
-        entity_id: timer.sleep_music_turn_off_timer
-  - service: media_player.play_media
-    data:
-      media_content_type: custom
-      media_content_id: turn off the screen
-    target:
-      entity_id: media_player.bedroom_echo
+        entity_id: media_player.bedroom_echo
   mode: queued
 blink_take_snapshot:
   alias: Blink Take Snapshot
   sequence:
-  - service: blink.trigger_camera
-    data: {}
-    target:
-      entity_id: camera.camera
-  - delay: 00:00:05
-  - service: blink.blink_update
-    data: {}
-  - service: camera.snapshot
-    target:
-      entity_id: camera.camera
-    data:
-      filename: /media/blink/blink_image_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
-  - service: input_datetime.set_datetime
-    data:
-      datetime: '{{((as_timestamp(state_attr(''script.blink_take_snapshot'', ''last_triggered''))
-        | timestamp_local ) ) }}'
-    target:
-      entity_id: input_datetime.last_blink_snapshot
+    - service: blink.trigger_camera
+      data: {}
+      target:
+        entity_id: camera.camera
+    - delay: 00:00:05
+    - service: blink.blink_update
+      data: {}
+    - service: camera.snapshot
+      target:
+        entity_id: camera.camera
+      data:
+        filename: /media/blink/blink_image_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
+    - service: input_datetime.set_datetime
+      data:
+        datetime:
+          "{{((as_timestamp(state_attr('script.blink_take_snapshot', 'last_triggered'))
+          | timestamp_local ) ) }}"
+      target:
+        entity_id: input_datetime.last_blink_snapshot
   mode: queued
 bedtime_triggered_from_google_home:
   alias: GH - bedtime
   sequence:
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - service: script.jarvis_script
-    data:
-      where: bedroomspeaker
-      type: speak
-      include: '<confirmation>  '
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 8
-      milliseconds: 0
-  - service: script.play_sleep_music
-    data: {}
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - service: script.jarvis_script
+      data:
+        where: bedroomspeaker
+        type: speak
+        include: "<confirmation>  "
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 8
+        milliseconds: 0
+    - service: script.play_sleep_music
+      data: {}
   mode: queued
-notification_speaker_ui:
-  alias: ui - Notification - Speaker
-  fields:
-    who:
-      description: who to send the notification to
-      example: brian sully all
-    where:
-      description: where to play notification (for speak or show)
-      example: bedroom kitchen garage livingroom sully_s_room all
-    what:
-      description: what device to play notification on(for speak or show)
-      example: 'bedroom_speaker kitchen_speaker garage_speaker livingroom_tv sully_speaker
-        all      '
-    actionable_event:
-      description: event id (to make this an actionable notification)
-      example: alexa_notification_bedroom_tvlights
-    message:
-      description: The message content
-      example: The light is on!
-    audio:
-      description: url to attach
-      example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
-  sequence:
-  - variables:
-      mediaplayerlist: '{{states.media_player|map(attribute=''entity_id'')|list}}'
-  - repeat:
-      count: '{{ mediaplayerlist| count }}'
-      sequence:
-      - variables:
-          mediaplayer: '{{ mediaplayerlist[repeat.index - 1] }}'
-          mediaplayername: '{{state_attr(mediaplayer,''friendly_name'') | slugify(separator=''_'')}}'
-          mediaplayerroom: '{{iif(area_id(mediaplayer) is none, ''noroom'', area_id(mediaplayer)
-            | string) }}'
-          roomquiethourentity: '{{''binary_sensor.''+(area_id(mediaplayer) | string)+''_quiet_hours''}}'
-          musicassistantplayer: '{{ mediaplayerlist[repeat.index - 1] +''_ma''}}'
-      - condition: template
-        value_template: '{{states(''binary_sensor.quiet_hours'') == "off"}}'
-        alias: Check if master quiet hours is off
-      - condition: or
-        conditions:
-        - condition: template
-          value_template: '{{(mediaplayername | length > 0  and what is search(mediaplayername,ignorecase=True))
-            or what is search("all", ignorecase=True)}}'
-          alias: if media player name in what then send to speaker or what = all
-        - condition: template
-          value_template: '{{where is search(mediaplayerroom, ignorecase=True) and
-            expand(''group.notification_speakers'')  | map(attribute=''entity_id'')
-            | list | contains(mediaplayer)}}'
-          alias: if media player room in where and media player in notification speakers
-            list then send to speaker
-        - condition: template
-          alias: if media player room is whos room and media player in notification
-            speakers list then send to speaker
-          value_template: "{% set dev = namespace(isroom=false) %} {% set peoplelist
-            = states.person | map(attribute='object_id') | list%} {%for person in
-            peoplelist%}\n  {%if who is search(person, ignorecase=True) or who is
-            search('all', ignorecase=True) %}\n    {%set room = states('sensor.'+person+'_room')%}\n
-            \   {%if room | slugify(separator='_')==mediaplayerroom | slugify(separator='_')%}\n
-            \     {% set dev.isroom = true%}\n    {%endif%}\n  {%endif%}\n{%endfor%}
-            {{dev.isroom and expand('group.notification_speakers')  | map(attribute='entity_id')
-            | list | contains(mediaplayer)}}"
-        alias: Check if this media_player in our where, what or who
-      - condition: template
-        value_template: '{{states(roomquiethourentity) != "on"}}'
-        alias: Check if quiet hours is off for room
-      - variables:
-          player_isPlaying: '{{ is_state(mediaplayer, ''playing'') }}'
-          player_volume: '{{state_attr(mediaplayer,''volume_level'')}}'
-      - service: media_player.media_pause
-        data: {}
-        target:
-          entity_id: '{{mediaplayer}}'
-        enabled: true
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.8
-        target:
-          entity_id: '{{mediaplayer}}'
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{mediaplayer is search(''echo'', ignorecase=True) and
-              (audio is not defined or audio =="") and (actionable_event is defined
-              and actionable_event!="")}}'
-            alias: Echo - Actionable TTS
-          sequence:
-          - service: script.alexa_actionable_notification
-            data_template:
-              text: '{{ message }}'
-              event_id: '{{actionable_event}}'
-              alexa_device: '{{mediaplayer}}'
-              suppress_confirmation: true
-        - conditions:
-          - condition: template
-            value_template: '{{mediaplayer is search(''echo'', ignorecase=True) and
-              (audio is defined and audio!="") and (actionable_event is defined and
-              actionable_event!="")}}'
-            alias: Echo - Actionable Audio File
-          sequence:
-          - service: media_player.play_media
-            target:
-              entity_id: '{{mediaplayer}}'
-            data:
-              media_content_type: sound
-              media_content_id: '{{audio}}'
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 10
-              milliseconds: 0
-          - service: script.alexa_actionable_notification
-            data_template:
-              text: '{{ message }}'
-              event_id: '{{actionable_event}}'
-              alexa_device: '{{mediaplayer}}'
-        - conditions:
-          - condition: template
-            value_template: '{{mediaplayer is search(''echo'', ignorecase=True) and
-              (audio is not defined or audio =="") and (actionable_event is not defined
-              or actionable_event=="")}}'
-            alias: Echo - Non Actionable TTS
-          sequence:
-          - service: notify.alexa_media
-            data:
-              title: Jarvis
-              message: '{{ message }}'
-              target: '{{mediaplayer}}'
-              data:
-                method: all
-                type: announce
-        - conditions:
-          - condition: template
-            value_template: '{{mediaplayer is search(''echo'', ignorecase=True) and
-              (audio is defined and audio!="") and (actionable_event is not defined
-              or actionable_event=="")}}'
-            alias: Echo - Non Actionable Audio File
-          sequence:
-          - service: media_player.play_media
-            target:
-              entity_id: media_player.bedroom_echo
-            data:
-              media_content_type: sound
-              media_content_id: '{{audio}}'
-        - conditions:
-          - condition: template
-            value_template: '{{ audio is not defined or audio ==""}}'
-            alias: Media Player - TTS
-          sequence:
-          - service: tts.speak
-            data:
-              media_player_entity_id: '{{mediaplayer}}'
-              message: '{{ message }}'
-              cache: true
-            target:
-              entity_id: tts.google_en_ie
-        - conditions:
-          - condition: template
-            value_template: '{{ (audio is defined and audio!="")}}'
-            alias: Media Player - Audio
-          sequence:
-          - service: media_player.play_media
-            target:
-              entity_id: '{{mediaplayer}}'
-            data:
-              media_content_type: music
-              media_content_id: '{{audio}}'
-      - if:
-        - condition: template
-          value_template: '{{ audio is not defined or audio ==""}}'
-        then:
-        - service: tts.google_translate_say
-          data:
-            cache: true
-            entity_id: '{{mediaplayer}}'
-            message: '{{ message }}'
-            language: en-ie
-        else:
-        - service: media_player.play_media
-          target:
-            entity_id: '{{mediaplayer}}'
-          data:
-            media_content_type: music
-            media_content_id: '{{audio}}'
-        enabled: false
-      - if:
-        - condition: template
-          value_template: '{{expand(''group.musicassistant_speakers'')  | map(attribute=''entity_id'')|
-            list | contains(musicassistantplayer)}}'
-          alias: if we have a music assistant version of media player
-        - condition: template
-          value_template: '{{player_isPlaying==True}}'
-          alias: if it was playing before the notification
-        then:
-        - service: media_player.volume_set
-          data:
-            volume_level: '{{player_volume}}'
-          target:
-            entity_id: '{{musicassistantplayer}}'
-        - wait_template: '{{ is_state(mediaplayer, ''idle'') }}'
-          continue_on_timeout: true
-          timeout: '60'
-        - service: media_player.media_play
-          data: {}
-          target:
-            entity_id: '{{musicassistantplayer}}'
-        enabled: true
-  mode: parallel
-notification_phone_ui:
-  alias: ui - Notification - Phone
-  fields:
-    who:
-      description: who to send the notification to
-      example: brian sully all
-    type:
-      description: type of notification
-      example: txt alert debug
-    actionable_event:
-      description: event id (to make this an actionable notification)
-      example: alexa_notification_bedroom_tvlights
-    message:
-      description: The message content
-      example: The light is on!
-    image:
-      description: url to attach
-      example: /media/snapshots/blink_image_20230618_213844.jpg
-    video:
-      description: url to attach
-      example: /media/samplevideo.mp4
-    audio:
-      description: url to attach
-      example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
-  sequence:
-  - variables:
-      peoplelist: '{{states.person | map(attribute=''object_id'') | list}}'
-  - repeat:
-      count: '{{ peoplelist| count }}'
-      sequence:
-      - variables:
-          person: '{{ peoplelist[repeat.index - 1] }}'
-          txtnotification_entity: input_boolean.text_notifications_{{person}}
-          service_entity: notify.notify_{{person}}
-      - condition: template
-        value_template: '{{states(''input_boolean.text_notifications'') == "on"}}'
-        alias: Check if master switch for notifications is turned on
-      - condition: template
-        value_template: '{{who is search(person, ignorecase=True) or who is search("all",
-          ignorecase=True) }}'
-        alias: Check if who = person or who = all
-      - condition: template
-        value_template: '{{(type=="txt" and states(txtnotification_entity) == "on")
-          or type=="alert" or (type=="debug" and states(''input_boolean.text_notifications_debug'')
-          =="on" )}}'
-        alias: Check if notification turned on for user or it is an alert or it is
-          debug and debug is turned on
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ (actionable_event is defined and actionable_event!="")}}'
-            alias: Actionable
-          sequence:
-          - service: '{{service_entity}}'
-            data:
-              message: '{{ message }}'
-              data:
-                image: '{{ image }}'
-                video: '{{ video }}'
-                actions:
-                - action: '{{actionable_event}}_YES'
-                  title: 'Yes'
-                - action: '{{actionable_event}}_NO'
-                  title: 'No'
-        - conditions:
-          - condition: template
-            value_template: '{{ (actionable_event is not defined or actionable_event=="")}}'
-            alias: Non Actionable
-          sequence:
-          - service: '{{service_entity}}'
-            data:
-              message: '{{ message }}'
-              data:
-                image: '{{ image }}'
-                video: '{{ video }}'
-        alias: Actionable or Non Actionable
-  mode: parallel
-  max: 20
-jarvis_script_ui:
-  alias: ui - Jarvis Script
-  sequence:
-  - if:
-    - condition: template
-      value_template: '{{include is search("<welcome>", ignorecase=True)}}'
-      alias: welcome message included
-    - condition: template
-      value_template: '{{range(1, 100) | random <=20}}'
-      alias: 20% chance of using AI
-    then:
-    - service: conversation.process
-      data:
-        agent_id: '{{[''576c3d3dec22a29c9729ede4a2adb8ec'', ''df20be275be33c144bee45dec9f62179'',]
-          | random }}'
-        text: tell me welcome home in a sarcastic and snarky way
-      response_variable: welcomegeneratedmessage
-      alias: Ask AI for welcome home message
-  - if:
-    - condition: template
-      value_template: '{{include is search("<brianbatterylow>", ignorecase=True)}}'
-      alias: brianbatterylow message included
-    - condition: template
-      value_template: '{{range(1, 100) | random <=20}}'
-      alias: 20% chance of using AI
-    then:
-    - service: conversation.process
-      data:
-        agent_id: '{{[''576c3d3dec22a29c9729ede4a2adb8ec'', ''df20be275be33c144bee45dec9f62179'',]
-          | random }}'
-        text: '''tell me my phone battery is low and should be charged in a sarcastic
-          and snarky way. Battery Percentage: ''{{states(''sensor.motorola_one_5g_ace_battery_level'')}}'
-      response_variable: batterygeneratedmessage
-      alias: Ask AI for battery low message
-  - if:
-    - condition: template
-      value_template: '{{include is search("<bedtime>", ignorecase=True)}}'
-      alias: bedtime message included
-    - condition: template
-      value_template: '{{range(1, 100) | random <=20}}'
-      alias: 20% chance of using AI
-    then:
-    - service: conversation.process
-      data:
-        agent_id: '{{[''576c3d3dec22a29c9729ede4a2adb8ec'', ''df20be275be33c144bee45dec9f62179'',]
-          | random }}'
-        text: ''' tell me it is bedtime in a sarcastic and snarky way. the current
-          time is ''{{now().strftime("%I:%M %p")}}'''''''
-      response_variable: bedtimegeneratedmessage
-      alias: Ask AI for bedtime message
-  - if:
-    - condition: template
-      value_template: '{{include is search("<gametime>", ignorecase=True)}}'
-      alias: gametime message included
-    - condition: template
-      value_template: '{{range(1, 100) | random <=10}}'
-      alias: 10% chance of using AI
-    then:
-    - service: conversation.process
-      data:
-        agent_id: '{{[''576c3d3dec22a29c9729ede4a2adb8ec'', ''df20be275be33c144bee45dec9f62179'',]
-          | random }}'
-        text: "{{[\n    'talk to me about playing video games',\n    'tell me a story
-          about my most relaxed awesome dog Cosmo',\n    'write a song about my most
-          relaxed awesome dog Cosmo',\n    ] | random\n}} in a sarcastic snarky way\""
-      response_variable: gametimegeneratedmessage
-      alias: Ask AI for gametime message
-  - variables:
-      jarvismessage: "{%set output=include%} {%if welcomegeneratedmessage is not defined%}\n
-        \ {%set aiwelcome=''%}\n{%else%}\n  {%set aiwelcome=welcomegeneratedmessage.response.speech.plain.speech%}\n{%endif%}
-        {%if batterygeneratedmessage is not defined%}\n  {%set aibattery=''%}\n{%else%}\n
-        \ {%set aibattery=batterygeneratedmessage.response.speech.plain.speech%}\n{%endif%}
-        {%if bedtimegeneratedmessage is not defined%}\n  {%set aibedtime=''%}\n{%else%}\n
-        \ {%set aibedtime=bedtimegeneratedmessage.response.speech.plain.speech%}\n{%endif%}
-        {%if gametimegeneratedmessage is not defined%}\n  {%set aigametime=''%}\n{%else%}\n
-        \ {%set aigametime=gametimegeneratedmessage.response.speech.plain.speech%}\n{%endif%}\n{%if
-        include is search('<greeting>', ignorecase=True)%}\n  {%if now().hour < 12
-        %}\n    {% set greeting='Good Morning Sir.' %}\n  {%elif now().hour >= 12
-        and now().hour < 17 %}\n    {% set greeting='Good Afternoon Sir.' %}\n  {%else%}\n
-        \   {%set greeting='Good Evening Sir.'%}\n  {%endif%}\n  {%set output = (output|regex_replace(find='<greeting>',
-        replace=greeting , ignorecase=True)) %}\n{%endif%} {%if include is search('<time>',ignorecase=True)
-        %}\n  {%if is_state('binary_sensor.morning','on') %}\n    {%set time='Today
-        is ' + states.sensor.today_is.state + ', ' + as_timestamp(now()) | timestamp_custom('%B
-        %d %Y') +'. It is '+ now().strftime('%I:%M %p') %}\n  {% else %}\n    {% set
-        time='It is '+ now().strftime('%I:%M %p') %}\n  {% endif %}\n  {%set output
-        = (output|regex_replace(find='<time>', replace=time, ignorecase=True)) %}\n{%endif%}\n{%if
-        include is search('<confirmation>',ignorecase=True) %}\n  {% set confirmation=
-        [\n            'Okay.',\n            'If you insist.',\n            'I am
-        afraid I can not do that,, I am kidding,',\n            'Leave it to me.',\n
-        \           'As you wish.',\n            'I am on it.',\n            'No Problem.',\n
-        \           'Will do.',\n            'I think I can handle that.',\n            'Working
-        on it now.',\n            ', Oh, you were talking to me. Let me take care
-        of that.'\n            'Why not. It is not like I ever sleep.',\n            'I
-        am not even supposed to be here today. But whatever.',\n            'You did
-        not say the magic word. , Oh forget it. I will take care of it.',\n            'Funny,
-        I was just about to do that.',\n            ] | random %}\n  {%set output
-        = (output|regex_replace(find='<confirmation>', replace=confirmation , ignorecase=True))
-        %} \n{%endif%}\n{%if include is search('<bedtime>',ignorecase=True) %}\n  {%if
-        aibedtime != ''%}\n    {%set output = (output|regex_replace(find='<bedtime>',
-        replace=aibedtime , ignorecase=True)) %}\n  {%else%}\n    {% set bedtime=
-        [\n            'Nighty night.',\n            'Time for bed fred.',\n            'don''t
-        let the bed bugs poop on you.',\n            'Time to hit the hay.',\n            'I''m
-        exhausted, turning in now.',\n            'Bed now.',\n            'Time to
-        get some beauty rest, you need it.',\n            'Go to sleep, or I will
-        put you to sleep.',\n            'Lights Out',\n            'Go to bed, you
-        sleepy head!',\n            'Sweet dreams'\n            ] | random %}\n    {%set
-        output = (output|regex_replace(find='<bedtime>',replace=bedtime , ignorecase=True))
-        %}\n  {%endif%}\n{%endif%}\n{%if include is search('<announcement>', ignorecase=True)
-        %}\n  {% set announcement=[\n            'Emergency Alert!',\n            'We
-        have a problem!',\n            'You might not like this.',\n            'There
-        is something that needs your attention.',\n            'Houston, we have a
-        problem',\n            'Danger, Danger!'\n            ] | random %}\n  {%set
-        output = (output|regex_replace(find='<announcement>',replace=announcement
-        , ignorecase=True)) %}\n{%endif%}\n{%if include is search('<interuption>',ignorecase=True)
-        %}\n  {% set interuption= [\n            'Pardon me, ',\n            'Excuse
-        me, ',\n            'I beg your pardon, ',\n            'I do not mean to
-        intrude, but, ',\n            'I am sorry to interrupt, but. ',\n            'Sir,
-        ',\n            'Pardon me Sir, ',\n            'Pardon me Boss, ',\n            'Boss,',\n
-        \           'I dont mean to interupt Boss, '\n            ] | random %}\n
-        \ {%set output = (output|regex_replace(find='<interuption>', replace=interuption,
-        ignorecase=True)) %}\n{%endif%}\n{%if include is search('<welcome>',ignorecase=True)
-        %}\n  {%if aiwelcome != ''%}\n    {%set output = (output|regex_replace(find='<welcome>',replace=aiwelcome
-        , ignorecase=True)) %}\n  {%else%}\n    {% set welcome=[\n            'Welcome
-        Home!',\n            'We are glad you are back, or at least Maddox is',\n
-        \           'About time you got home',\n            'You are back, don''t
-        ever leave me again',\n            'Home Sweet Home, I see',\n            'Welcome
-        back, they say there is no place like home, but how would I know I never get
-        to leave.'\n            ] | random %}\n    {%set output = (output|regex_replace(find='<welcome>',
-        replace=welcome , ignorecase=True))%}\n  {%endif%}\n{%endif%}\n{%if include
-        is search('<gametime>', ignorecase=True) %}\n  {%if aigametime != ''%}\n    {%set
-        output = (output|regex_replace(find='<gametime>',replace=aigametime , ignorecase=True))
-        %}\n  {%else%}\n    {% set gametime=[\n            'Time to play some xbox,
-        I see.',\n            'Eat Sleep Game Fart, Repeat.',\n            'Playstation,
-        ohh wait I forgot you are one of those xbox fans.',\n            'up up down
-        down left right left right b a start',\n            'Gametime',\n            'Can
-        I play? Do you have an extra controller for me?',\n            'Back in my
-        day, all we had was pac man',\n            'Thank You, Mario! But our Princess
-        is in Another Castle!',\n            'Do you even game, Bro?',\n            'XBOX',\n
-        \           'Would,,,you,,, like,,, to,,, play,,, a,,, game?',\n            'Not
-        to be a tattle tale, but Maddox was in here playing your xbox earlier',\n
-        \           'Hello Sir, I''ve been trying to reach you about your car''s extended
-        warranty',\n            'I just went to the bathroom it was pooptacular',\n
-        \           \"Excuse me sir, before you start playing, why don't you go give
-        Cosmo a hug. I am certain he would love that.\",\n            ] | random %}\n
-        \   {%set output = (output|regex_replace(find='<gametime>', replace=gametime
-        , ignorecase=True))%}\n  {%endif%}\n{%endif%}\n{%if include is search('<brianbatterylow>',ignorecase=True)
-        %}\n  {%if aibattery != ''%}\n    {%set output = (output|regex_replace(find='<brianbatterylow>',
-        replace=aibattery , ignorecase=True)) %}\n  {%else%}\n    {%if states.sensor.motorola_one_5g_ace_battery_level.state|int>30%}\n
-        \     {%set brianbatterylow ='The Battery on your phone is '+states.sensor.motorola_one_5g_ace_battery_level.state+'%,
-        not sure why you wanted me to tell you that.'%}\n    {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=30%}\n
-        \     {%set brianbatterylow ='The Battery on your phone is getting a little
-        low. You might want to charge it.'%}\n    {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=20%}\n
-        \     {%set brianbatterylow ='Seriously you only have '+states.sensor.motorola_one_5g_ace_battery_level.state+'%
-        battery life remaining, charge your phone fool.'%}\n    {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=10%}\n
-        \     {%set brianbatterylow =\"OK, \"+states.sensor.motorola_one_5g_ace_battery_level.state+\"%
-        battery left. Don't complain to me when your phone is dead, then what will
-        you do, stare at the walls.\" %}\n    {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=5%}\n
-        \     {%set brianbatterylow ='Hello, are you still alive? Your phone has '+states.sensor.motorola_one_5g_ace_battery_level.state+'%
-        left. If you are dead, your phone is about to be also.' %}\n    {%endif%}\n
-        \   {%set output = (output|regex_replace(find='<brianbatterylow>', replace=brianbatterylow,
-        ignorecase=True)) %}\n  {%endif%}\n{%endif%}\n{%if include is search('<message>',ignorecase=True)
-        %}\n  {%set output = (output|regex_replace(find='<message>',replace=message
-        , ignorecase=True)) %}\n{%endif%}\n{{output}}"
-    alias: Define variable jarvismessage
-  - if:
-    - condition: template
-      value_template: '{{ type is search("txt", ignorecase=True) or type is search("alert",ignorecase=True)
-        or type is search("debug", ignorecase=True)}}'
-      alias: Phone Notifications
-    then:
-    - service: script.notification_phone
-      data:
-        who: '{{who}}'
-        type: '{{type}}'
-        actionable_event: '{{actionable_event}}'
-        message: '{{jarvismessage}}'
-        audio: '{{audio}}'
-        image: '{{image}}'
-        video: '{{video}}'
-  - if:
-    - condition: template
-      value_template: '{{ type is search("speak", ignorecase=True)}}'
-      alias: Speaker Notifications
-    then:
-    - service: script.notification_speaker
-      data:
-        who: '{{who}}'
-        where: '{{where}}'
-        what: '{{what}}'
-        actionable_event: '{{actionable_event}}'
-        message: '{{jarvismessage}}'
-        audio: '{{audio}}'
-  - if:
-    - condition: template
-      value_template: '{{ type is search("show", ignorecase=True)}}'
-      alias: TV Notifications
-    then: []
-  fields:
-    who:
-      description: who to send the notification to
-      example: brian sully all
-      default: ''
-    where:
-      description: where to play notification (for speak or show)
-      example: bedroom kitchen garage livingroom sully_s_room all
-      default: ''
-    what:
-      description: what device to play notification on(for speak or show)
-      example: 'bedroom_speaker kitchen_speaker garage_speaker livingroom_tv sully_speaker
-        all    '
-      default: ''
-    type:
-      description: type of notification
-      example: txt alert debug speak show
-      default: ''
-    actionable_event:
-      description: event id (to make this an actionable notification)
-      example: alexa_notification_bedroom_tvlights
-      default: ''
-    message:
-      description: The message content
-      example: The light is on!
-      default: ''
-    include:
-      description: Jarvis parts to include in message (in order you want to be in)
-      example: <greeting> <confirmation> <interuption> <announcement> <time> <otherprebuilt>
-        <message> <audio> <video> <image>
-      default: ''
-    image:
-      description: url to attach
-      example: /media/snapshots/blink_image_20230618_213844.jpg
-      default: ''
-    video:
-      description: url to attach
-      example: /media/samplevideo.mp4
-      default: ''
-    audio:
-      description: url to attach
-      example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
-      default: ''
-  mode: parallel
-  max: 20
 music_shuffle_all_artists_loop:
   alias: Music - Shuffle All Artists (inner loop to avoid stop on error)
   sequence:
-  - service: mass.queue_command
-    continue_on_error: true
-    data:
-      enqueue_mode: add
-      player_id: '{{ states(''input_text.playartistloopentity'') }}'
-      command: play_media
-      repeat_mode: all
-      uri: database://artist/{{ states('counter.playartistloopcounter') | int }}
+    - service: mass.queue_command
+      continue_on_error: true
+      data:
+        enqueue_mode: add
+        player_id: "{{ states('input_text.playartistloopentity') }}"
+        command: play_media
+        repeat_mode: all
+        uri: database://artist/{{ states('counter.playartistloopcounter') | int }}
   mode: queued
   max: 500
 music_shuffle_all_artists:
@@ -649,128 +123,101 @@ music_shuffle_all_artists:
       description: MA media player to que music on
       example: media_player.garage_speaker_ma
   sequence:
-  - service: input_text.set_value
-    data:
-      value: '{{media_player_entity}}'
-    target:
-      entity_id: input_text.playartistloopentity
-  - service: counter.reset
-    data: {}
-    target:
-      entity_id: counter.playartistloopcounter
-  - service: media_player.clear_playlist
-    data: {}
-    target:
-      entity_id: '{{media_player_entity}}'
-  - repeat:
-      count: '{{ states(''input_number.playartistcount'') | int }}'
-      sequence:
-      - if:
-        - condition: template
-          value_template: '{{range(1, 100) | random <=20}}'
-          alias: 20% chance to include artist (adding every artist takes a few minutes
-            so we will only add 20%)
-        then:
-        - service: script.turn_on
-          data: {}
-          target:
-            entity_id: script.music_shuffle_all_artists_loop
-        - wait_for_trigger:
-          - platform: state
-            entity_id:
-            - script.music_shuffle_all_artists_loop
-            to: 'off'
-            for:
-              hours: 0
-              minutes: 0
-              seconds: 0
-          timeout:
-            hours: 0
-            minutes: 0
-            seconds: 15
-            milliseconds: 0
-      - service: counter.increment
-        data: {}
-        target:
-          entity_id: counter.playartistloopcounter
-  - service: media_player.shuffle_set
-    data:
-      shuffle: true
-    target:
-      entity_id: '{{media_player_entity}}'
-  - service: media_player.media_play
-    data: {}
-    target:
-      entity_id: '{{media_player_entity}}'
+    - service: input_text.set_value
+      data:
+        value: "{{media_player_entity}}"
+      target:
+        entity_id: input_text.playartistloopentity
+    - service: counter.reset
+      data: {}
+      target:
+        entity_id: counter.playartistloopcounter
+    - service: media_player.clear_playlist
+      data: {}
+      target:
+        entity_id: "{{media_player_entity}}"
+    - repeat:
+        count: "{{ states('input_number.playartistcount') | int }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{range(1, 100) | random <=20}}"
+                alias:
+                  20% chance to include artist (adding every artist takes a few minutes
+                  so we will only add 20%)
+            then:
+              - service: script.turn_on
+                data: {}
+                target:
+                  entity_id: script.music_shuffle_all_artists_loop
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id:
+                      - script.music_shuffle_all_artists_loop
+                    to: "off"
+                    for:
+                      hours: 0
+                      minutes: 0
+                      seconds: 0
+                timeout:
+                  hours: 0
+                  minutes: 0
+                  seconds: 15
+                  milliseconds: 0
+          - service: counter.increment
+            data: {}
+            target:
+              entity_id: counter.playartistloopcounter
+    - service: media_player.shuffle_set
+      data:
+        shuffle: true
+      target:
+        entity_id: "{{media_player_entity}}"
+    - service: media_player.media_play
+      data: {}
+      target:
+        entity_id: "{{media_player_entity}}"
   mode: single
-alexa_actionable_notification_ui:
-  alias: ui - Alexa Actionable Notification
-  description: Activates an actionable notification on a specific echo device
-  fields:
-    text:
-      description: The text you would like alexa to speak.
-      example: What would you like the thermostat set to?
-    event_id:
-      description: Correlation ID for event responses
-      example: ask_for_temperature
-    alexa_device:
-      description: Alexa device you want to trigger
-      example: media_player.bedroom_echo
-    suppress_confirmation:
-      description: Set true if you want to suppress 'okay' confirmation
-      example: 'true'
-  sequence:
-  - service: input_text.set_value
-    data_template:
-      entity_id: input_text.alexa_actionable_notification
-      value: '{"text": "{{ text }}", "event": "{{ event_id }}", "suppress_confirmation":
-        "{{ suppress_confirmation }}", "mediaplayer_entity": "{{ alexa_device }}"
-        }'
-  - service: media_player.play_media
-    data_template:
-      entity_id: '{{ alexa_device }}'
-      media_content_type: skill
-      media_content_id: amzn1.ask.skill.cc4ec8c4-4659-40ee-b12a-69e3d9f910a7
-  mode: single
+
 alexa_pause_bedroom_tv:
   alias: Alexa - Pause Bedroom TV
   sequence:
-  - service: media_player.media_pause
-    data: {}
-    target:
-      entity_id: media_player.bedroom_tv
+    - service: media_player.media_pause
+      data: {}
+      target:
+        entity_id: media_player.bedroom_tv
   mode: single
 alexa_play_bedroom_tv:
   alias: Alexa - Play Bedroom TV
   sequence:
-  - service: media_player.media_play
-    data: {}
-    target:
-      entity_id: media_player.bedroom_tv
+    - service: media_player.media_play
+      data: {}
+      target:
+        entity_id: media_player.bedroom_tv
   mode: single
 alexa_stop_bedroom_tv:
   alias: Alexa - Stop Bedroom TV
   sequence:
-  - service: media_player.media_stop
-    data: {}
-    target:
-      entity_id: media_player.bedroom_tv
-  - service: media_player.turn_off
-    data: {}
-    target:
-      entity_id: media_player.bedroom_tv
+    - service: media_player.media_stop
+      data: {}
+      target:
+        entity_id: media_player.bedroom_tv
+    - service: media_player.turn_off
+      data: {}
+      target:
+        entity_id: media_player.bedroom_tv
   mode: single
 alexa_turn_off_bedroom_tv:
   alias: Alexa - Turn off Bedroom TV
   sequence:
-  - service: google_assistant_sdk.send_text_command
-    data:
-      command: turn off bedroom tv
+    - service: google_assistant_sdk.send_text_command
+      data:
+        command: turn off bedroom tv
   mode: single
 alexa_turn_on_bedroom_tv:
   alias: Alexa - Turn on Bedroom TV
   sequence:
-  - service: google_assistant_sdk.send_text_command
-    data:
-      command: turn on bedroom tv
+    - service: google_assistant_sdk.send_text_command
+      data:
+        command: turn on bedroom tv
   mode: single
