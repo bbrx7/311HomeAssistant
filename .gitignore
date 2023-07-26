@@ -16,3 +16,5 @@ templatetests.txt
 watchman_report.txt
 known_devices.yaml
 frigate.yaml
+amcrest.yaml
+mqtt.yaml
