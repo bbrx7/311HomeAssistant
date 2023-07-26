@@ -438,7 +438,7 @@ script:
               {%endif%}
             {%endif%}
 
-            {#if <gametime> included add to outputmessage#}
+            {#if <gametime> included add to outputmessage (funny things to irritate my son and maybe make him laugh when he turns on his xbox)#}
             {%if include is search('<gametime>', ignorecase=True) %}
               {%if aigametime != ''%}
                 {%set outputmessage = (outputmessage|regex_replace(find='<gametime>',replace=aigametime , ignorecase=True))%}
