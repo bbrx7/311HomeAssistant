@@ -567,7 +567,7 @@ script:
     sequence:
       - variables:
           mediaplayerlist: "{{states.media_player|map(attribute='entity_id')|list}}"
-      # loop through media players to find ones that match out who or where or what
+      # loop through media players to find ones that match out who or where or what (loop makes it easy to send to multiple places for each one that matches)
       - repeat:
           count: "{{mediaplayerlist| count}}"
           sequence:
