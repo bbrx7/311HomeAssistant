@@ -1,0 +1,18 @@
+alert_water_leak_in_basement_kitchen:
+  name: Water Leak in Basement (Kitchen)
+  done_message: Basement in Dry
+  entity_id: binary_sensor.basement_kitchen_water_sensor_water_leak
+  state: "on"
+  repeat: 10
+  can_acknowledge: true
+  skip_first: false
+  notifiers: notify_all
+alert_water_leak_in_basement_bedroom:
+  name: Water Leak in Basement (Bedroom)
+  done_message: Basement in Dry
+  entity_id: binary_sensor.basement_bedroom_water_sensor_water_leak
+  state: "on"
+  repeat: 10
+  can_acknowledge: true
+  skip_first: false
+  notifiers: notify_all

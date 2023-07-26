@@ -1,0 +1,70 @@
+environment_vars:
+  LIBVA_DRIVER_NAME: radeonsi
+
+mqtt:
+  host: core-mosquitto
+  user: !secret MQTT_user
+  password: !secret MQTT_password
+
+go2rtc:
+  streams:
+    camera1: !secret frigate_camera1_subtype0
+    camera2: !secret frigate_camera2_subtype0
+
+cameras:
+  camera1:
+    ffmpeg:
+      inputs:
+        - path: !secret frigate_camera1_subtype1
+          roles:
+            - detect
+        - path: !secret frigate_camera1_subtype0
+          roles:
+            - record
+    detect:
+      enabled: true
+      width: 640
+      height: 480
+      fps: 5
+    record:
+      enabled: true
+    snapshots:
+      enabled: true
+    motion:
+      mask:
+        - 372,41,613,39,611,21,371,21
+  camera2:
+    ffmpeg:
+      inputs:
+        - path: !secret frigate_camera2_subtype1
+          roles:
+            - detect
+        - path: !secret frigate_camera2_subtype0
+          roles:
+            - record
+    detect:
+      enabled: true
+      width: 640
+      height: 480
+      fps: 5
+    record:
+      enabled: true
+    snapshots:
+      enabled: true
+    motion:
+      mask:
+        - 372,41,613,39,611,21,371,21
+
+objects:
+  # Optional: list of objects to track from labelmap.txt (default: shown below)
+  track:
+    - person
+    - cat
+    - dog
+    - car
+    - motorcycle
+    - teddy bear
+    - cell phone
+    - laptop
+    - sports ball
+    - lion

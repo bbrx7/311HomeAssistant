@@ -1,0 +1,110 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+homeassistant:
+  packages: !include_dir_named packages
+  allowlist_external_dirs:
+    - /media/blink/
+  media_dirs:
+    snapshots: /media/blink/
+    sounds: /media/sounds/
+
+media_extractor:
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies: !secret trusted_proxies
+
+google_assistant: !include google_assistant.yaml
+emulated_hue: !include emulated_hue.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+notify: !include notify.yaml
+input_boolean: !include input_boolean.yaml
+input_select: !include input_select.yaml
+input_number: !include input_number.yaml
+input_text: !include input_text.yaml
+input_datetime: !include input_datetime.yaml
+template: !include template.yaml
+alert: !include alert.yaml
+group: !include groups.yaml
+
+utility_meter:
+  # Use the 7 day history of motion at front door
+  # to get daily motion.
+  hourly_steps:
+    source: sensor.motorola_one_5g_ace_steps_sensor
+    cycle: hourly
+  daily_steps:
+    source: sensor.motorola_one_5g_ace_steps_sensor
+    cycle: daily
+
+bluetooth:
+device_tracker:
+  - platform: bluetooth_le_tracker
+    track_new_devices: false
+    track_battery: false
+    track_battery_interval: 3600
+
+proximity:
+  homex:
+    zone: home
+    devices:
+      - device_tracker.motorola_one_5g_ace
+      - device_tracker.nmap_tracker_3c_fa_06_9b_dc_fb
+    tolerance: 50
+    unit_of_measurement: mi
+  workx:
+    zone: work
+    devices:
+      - device_tracker.motorola_one_5g_ace
+      - device_tracker.nmap_tracker_3c_fa_06_9b_dc_fb
+    tolerance: 10
+    unit_of_measurement: mi
+# amcrest:
+#   - host: !secret amcrestcamera1_host
+#     username: !secret amcrestcamera1_username
+#     password: !secret amcrestcamera1_password
+#     name: amcrestcamera1
+#   - host: !secret amcrestcamera2_host
+#     username: !secret amcrestcamera2_username
+#     password: !secret amcrestcamera2_password
+#     name: amcrestcamera2
+
+# mqtt:
+#   binary_sensor:
+#     - name: "Fully Kiosk Motion Sensor"
+#       unique_id: "fully_kiosk_ae1a7c6a-29f0c994_motion"
+#       availability_topic: "fully/ae1a7c6a-29f0c994"
+#       availability_template: |-
+#         {{ 'online' if value_json.motionDetectorStatus > 0 else 'offline' }}
+#       device_class: motion
+#       off_delay: 60
+#       state_topic: "fully/ae1a7c6a-29f0c994/event/onMotion"
+#       value_template: |-
+#         {{ 'ON' if value_json.type == 'visual' and value_json.event == 'onMotion' }}
+#     - name: "Fully Kiosk Sound Sensor"
+#       unique_id: "fully_kiosk_ae1a7c6a-29f0c994_sound"
+#       availability_topic: "fully/ae1a7c6a-29f0c994"
+#       availability_template: |-
+#         {{ 'online' if value_json.motionDetectorStatus == 2 else 'offline' }}
+#       device_class: sound
+#       off_delay: 60
+#       state_topic: "fully/ae1a7c6a-29f0c994/event/onMotion"
+#       value_template: |-
+#         {{ 'ON' if value_json.type == 'acoustic' and value_json.event == 'onMotion' }}
+#     - name: "Fully Kiosk Movement Sensor"
+#       unique_id: "fully_kiosk_ae1a7c6a-29f0c994_movement"
+#       availability_topic: "fully/ae1a7c6a-29f0c994"
+#       availability_template: |-
+#         {{ 'online' if value_json.mqttConnected else 'offline' }}
+#       device_class: moving
+#       off_delay: 60
+#       state_topic: "fully/ae1a7c6a-29f0c994/event/onMovement"
+#       value_template: |-
+#         {{ 'ON' if value_json.event == 'onMovement' }}

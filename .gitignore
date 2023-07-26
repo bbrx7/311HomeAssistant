@@ -1,0 +1,16 @@
+.cloud/
+.storage/
+backup/
+blueprints/
+custom_components/
+deps/
+esphome/
+node-red/
+tts/
+www/
+zigbe2mqtt/
+home-assistant*.*
+secrets.yaml
+service_account.json
+templatetests.txt
+watchman_report.txt

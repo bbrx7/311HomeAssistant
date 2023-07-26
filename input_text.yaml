@@ -1,0 +1,33 @@
+today_holiday:
+  name: Holiday
+  icon: mdi:party-popper
+
+melody_arming:
+  name: Alarm Arming Melody
+  icon: mdi:music
+
+melody_pending:
+  name: Alarm Pending Melody
+  icon: mdi:music
+
+melody_armed:
+  name: Alarm Armed Melody
+  icon: mdi:music
+
+melody_disarmed:
+  name: Alarm Disarmed Melody
+  icon: mdi:music
+
+melody_door_chime:
+  name: Door Chime Melody
+  icon: mdi:music
+
+alexa_actionable_notification:
+  name: Alexa Actionable Notification Holder
+  max: 255
+  initial: '{"text": "I noticed you are watching tv, would you like for me to turn off the lights?", "event": "actionable.skill.test", "suppress_confirmation": "true", "mediaplayer_entity": "media_player.bedroom_echo"}'
+
+upcoming_events:
+  name: Upcoming Events
+  max: 255
+  initial: "no events"

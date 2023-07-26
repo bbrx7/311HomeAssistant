@@ -1,0 +1,16 @@
+- name: notify_all
+  platform: group
+  services:
+    - service: mobile_app_motorola_one_5g_ace
+- name: notify_brian
+  platform: group
+  services:
+    - service: mobile_app_motorola_one_5g_ace
+- name: notify_sully
+  platform: group
+  services:
+    - service: mobile_app_motorola_one_5g_ace
+- name: notify_debug
+  platform: group
+  services:
+    - service: mobile_app_motorola_one_5g_ace

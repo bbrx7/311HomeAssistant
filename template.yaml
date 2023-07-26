@@ -1,0 +1,565 @@
+# - binary_sensor:
+#     - name: "Camera Occupancy for Alarm"
+#       unique_id: camera_occupancy_for_alarm
+#       device_class: presence
+#       state: >-
+#         {{is_state('input_boolean.camera_occupancy_triggers_alarm_boolean','on') and (is_state('binary_sensor.camera1_person_occupancy', 'on') or is_state('binary_sensor.camera2_person_occupancy', 'on') or is_state('binary_sensor.camera2_dog_occupancy', 'on') )}}
+# - binary_sensor:
+#     - name: "Camera Motion for Alarm"
+#       unique_id: camera_motion_for_alarm
+#       device_class: motion
+#       state: >-
+#         {{is_state('input_boolean.camera_motion_triggers_alarm_boolean','on') and (is_state('binary_sensor.camera1_motion', 'on') or is_state('binary_sensor.camera2_motion', 'on') )}}
+
+- binary_sensor:
+    - name: "Today is Weekend"
+      unique_id: today_weekend
+      icon: mdi:glass-mug-variant
+      state: >-
+        {%- set tomorrow=now().date() %}
+                {% if tomorrow.weekday() >= 5 %}
+                  true
+                {% else %}
+                  false
+                {% endif %}
+- binary_sensor:
+    - name: "tomorrow is Weekend"
+      unique_id: tomorrow_weekend
+      icon: mdi:glass-mug-variant
+      state: >-
+        {%- set tomorrow=now().date()+ timedelta(days=1) %}
+                {% if tomorrow.weekday() >= 5 %}
+                  true
+                {% else %}
+                  false
+                {% endif %}
+- binary_sensor:
+    - name: "Today is a School Day"
+      unique_id: today_school
+      icon: mdi:book-open-page-variant
+      state: >-
+        {% if is_state('input_boolean.summer_break_boolean', 'on') or is_state('binary_sensor.today_is_weekend', 'on') or is_state('binary_sensor.today_is_a_school_holiday', 'on')  %}
+          false
+        {% else %}
+          true
+        {% endif %}
+- binary_sensor:
+    - name: "Tomorrow is a School Day"
+      unique_id: tomorrow_school
+      icon: mdi:book-open-page-variant
+      state: >-
+        {% if is_state('input_boolean.summer_break_boolean', 'on') or is_state('binary_sensor.tomorrow_is_weekend', 'on') or is_state('binary_sensor.tomorrow_is_a_school_holiday', 'on')  %}
+          false
+        {% else %}
+          true
+        {% endif %}
+- binary_sensor:
+    - name: "Today is a Work Day"
+      unique_id: today_work
+      icon: mdi:keyboard-outline
+      state: >-
+        {% if is_state('binary_sensor.today_is_weekend', 'on') or is_state('binary_sensor.today_is_a_work_holiday', 'on')  %}
+          false
+        {% else %}
+          true
+        {% endif %}
+- binary_sensor:
+    - name: "Tomorrow is a Work Day"
+      unique_id: tomorrow_Work
+      icon: mdi:keyboard-outline
+      state: >-
+        {% if is_state('binary_sensor.tomorrow_is_weekend', 'on') or is_state('binary_sensor.tomorrow_is_a_work_holiday', 'on')  %}
+          false
+        {% else %}
+          true
+        {% endif %}
+- binary_sensor:
+    - name: "Today is a School Holiday"
+      unique_id: today_school_holiday
+      icon: mdi:party-popper
+      state: >-
+        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set next_event_end=strptime(state_attr('calendar.school','end_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set today=now().date()  %}
+        {%- set event=states.calendar.school.attributes.message %}
+        {% if event | regex_match('School Holiday', ignorecase=True)  and today >= next_event_start and today < next_event_end %}
+          true
+        {% else %}
+          false
+        {% endif %}
+- binary_sensor:
+    - name: "Tomorrow is a School Holiday"
+      unique_id: tomorrow_school_holiday
+      icon: mdi:party-popper
+      state: >-
+        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set next_event_end=strptime(state_attr('calendar.school','end_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set tomorrow=now().date()+timedelta(days=1)  %}
+        {%- set event=states.calendar.school.attributes.message %}
+        {% if event | regex_match('School Holiday', ignorecase=True)  and tomorrow >= next_event_start and tomorrow < next_event_end %}
+          true
+        {% else %}
+          false
+        {% endif %}
+- binary_sensor:
+    - name: "Today is a Work Holiday"
+      unique_id: today_work_holiday
+      icon: mdi:party-popper
+      state: >-
+        {%- set next_event_start=strptime(state_attr('calendar.work','start_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set next_event_end=strptime(state_attr('calendar.work','end_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set today=now().date()  %}
+        {%- set event=states.calendar.work.attributes.message %}
+        {% if (event | regex_match('Work Holiday', ignorecase=True) or event | regex_match('CTO', ignorecase=True)) and today >= next_event_start and today < next_event_end %}
+          true
+        {% else %}
+          false
+        {% endif %}
+- binary_sensor:
+    - name: "Tomorrow is a Work Holiday"
+      unique_id: tomorrow_work_holiday
+      icon: mdi:party-popper
+      state: >-
+        {%- set next_event_start=strptime(state_attr('calendar.work','start_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set next_event_end=strptime(state_attr('calendar.work','end_time'), '%Y-%m-%d %H:%M:%S').date() %}
+        {%- set tomorrow=now().date()+timedelta(days=1)  %}
+        {%- set event=states.calendar.work.attributes.message %}
+        {% if (event | regex_match('Work Holiday', ignorecase=True) or event | regex_match('CTO', ignorecase=True)) and tomorrow >= next_event_start and tomorrow < next_event_end %}
+          true
+        {% else %}
+          false
+        {% endif %}
+
+- binary_sensor:
+    - name: brian_home
+      unique_id: brian_home
+      icon: mdi:home-account
+      state: >-
+        {{ states('person.brian')|lower == 'home' }}
+
+- binary_sensor:
+    - name: sully_home
+      unique_id: sully_home
+      icon: mdi:home-account
+      state: >-
+        {{ states('person.sully')|lower == 'home' }}
+
+- binary_sensor:
+    - name: p1_home
+      unique_id: p1_home
+      icon: mdi:home-account
+      state: >-
+        {{ states('person.amanda')|lower == 'home' }}
+
+- binary_sensor:
+    - name: p2_home
+      unique_id: p2_home
+      icon: mdi:home-account
+      state: >-
+        {{ states('person.collyn')|lower == 'home' }}
+
+- sensor:
+    - name: "Today is"
+      unique_id: today_is
+      state: "{{ ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][now().weekday()] }}"
+
+- sensor:
+    - name: occupant_count
+      unique_id: occupant_count
+      icon: mdi:account-group
+      state: >-
+        {{expand('group.people') | selectattr('state', 'eq', 'on') | list | count}}
+
+- sensor:
+    - name: occupant_count_family
+      unique_id: occupant_count_family
+      icon: mdi:account-group
+      state: >-
+        {{expand('group.family') | selectattr('state', 'eq', 'on') | list | count}}
+
+# sensor so we can trigger when we actually start watching something vs it buffereing or being paused/played in the middle
+- sensor:
+    - name: bedroom_tv_isplaying
+      unique_id: bedroom_tv_isplaying
+      icon: mdi:play-circle-outline
+      state: >-
+        {%set currentstate=states('bedroom_tv_isplaying')%}
+        {%set reportedstate=states('media_player.bedroom_tv')%}
+        {%if reportedstate=='off'%}
+          off
+        {%elif reportedstate=='unavailable'%}
+          {{currentstate}}          
+        {%else%}
+          on
+        {%endif%}
+- sensor:
+    - name: living_room_tv_isplaying
+      unique_id: living_room_tv_isplaying
+      icon: mdi:play-circle-outline
+      state: >-
+        {%set currentstate=states('living_room_tv_isplaying')%}
+        {%set reportedstate=states('media_player.living_room_tv')%}
+        {%if reportedstate=='off'%}
+          off
+        {%elif reportedstate=='unavailable'%}
+          {{currentstate}}
+        {%else%}
+          on
+        {%endif%}
+
+- sensor:
+    - name: outside_temperature
+      unique_id: outside_temperature
+      icon: mdi:thermometer
+      state: >-
+        {{state_attr('weather.forecast_home','temperature')}}
+
+#moved to notifications package
+# - sensor:
+#     - name: brian_room
+#       unique_id: brian_room
+#       icon: mdi:map-marker
+#       state: >
+#         {%if is_state('binary_sensor.brian_home','on') %}
+#           {%if is_state('input_boolean.mechanic_mode_boolean','on') %}
+#             Garage
+#           {%elif states('media_player.bedroom_tv') | lower == 'playing' and state_attr('media_player.bedroom_tv','media_title') is not search('sleep', ignorecase=True)%}
+#             Bedroom
+#           {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'ohhnomrbill'%}
+#             Bedroom
+#           {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'garage'%}
+#             Outside
+#           {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'im all jacked up on mt dew'%}
+#             Kitchen
+#           {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'allmixedup'%}
+#             Bathroom
+#           {%else%}
+#             Unknown
+#           {%endif %}
+#         {% else %}
+#           {{states('person.brian')}}
+#         {% endif %}
+
+# - sensor:
+#     - name: sully_room
+#       unique_id: sully_room
+#       icon: mdi:map-marker
+#       state: >
+#         {%if is_state('binary_sensor.sully_home','on') %}
+#             Sully's Room
+#         {% else %}
+#           {{states('person.sully')}}
+#         {% endif %}
+
+# - sensor:
+#     - name: brian_speaker
+#       unique_id: brian_speaker
+#       icon: mdi:account-voice
+#       state: >
+#         {% set dev = namespace(myspeaker='') %}
+
+#         {%set myroom=states('sensor.brian_room') %}
+
+#         {% for d in area_devices(myroom) %}
+#           {% if device_attr(d,'name') is search(' speaker', ignorecase=True) or device_attr(d,'name') is search(' mini', ignorecase=True) or device_attr(d,'name') is search(' music', ignorecase=True) or device_attr(d,'name') is search('echo', ignorecase=True) %}
+#             {%set dev.myspeaker = device_attr(d,'name')%}
+#           {%endif%}
+#         {%endfor%}
+
+#         {% if dev.myspeaker=='' %}
+#           {% for d in area_devices(myroom) %}
+#             {% if device_attr(d,'name') is search(' tv', ignorecase=True) %}
+#               {%set dev.myspeaker = device_attr(d,'name')%}
+#             {%endif%}
+#           {%endfor%}
+#         {%endif%}
+
+#         {% if dev.myspeaker=='' %}
+#           {%set dev.myspeaker = 'none'%}
+#         {%endif%}
+#         {{dev.myspeaker}}
+
+# - sensor:
+#     - name: sully_speaker
+#       unique_id: sully_speaker
+#       icon: mdi:account-voice
+#       state: >
+#         {% set dev = namespace(myspeaker='') %}
+
+#         {%set myroom=states('sensor.sully_room') %}
+
+#         {% for d in area_devices(myroom) %}
+#           {% if device_attr(d,'name') is search(' speaker', ignorecase=True) or device_attr(d,'name') is search(' mini', ignorecase=True) %}
+#             {%set dev.myspeaker = device_attr(d,'name')%}
+#           {%endif%}
+#         {%endfor%}
+
+#         {% if dev.myspeaker=='' %}
+#           {% for d in area_devices(myroom) %}
+#             {% if device_attr(d,'name') is search(' tv', ignorecase=True) %}
+#               {%set dev.myspeaker = device_attr(d,'name')%}
+#             {%endif%}
+#           {%endfor%}
+#         {%endif%}
+
+#         {% if dev.myspeaker=='' %}
+#           {%if is_state('binary_sensor.sully_home','on')%}
+#             {%set dev.myspeaker = "Sullivan's mini"%}
+#           {%else%}
+#             {%set dev.myspeaker = "none"%}
+#           {%endif%}
+#         {%endif%}
+#         {{dev.myspeaker}}
+
+# - sensor:
+#     - name: brian_speaker_id
+#       unique_id: brian_speaker_id
+#       state: >
+#         {%if expand(states.media_player) | selectattr('attributes.friendly_name', 'eq',states('sensor.brian_speaker'))  | list | is_defined %}
+#           {% set device =  expand(states.media_player) | selectattr('attributes.friendly_name', 'eq',states('sensor.brian_speaker')) | list | random  %}
+#           {%set device_id = device.entity_id%}
+#         {%else%}
+#           {%set device_id = 'none'%}
+#         {%endif%}
+#         {{device_id}}
+
+# - sensor:
+#     - name: sully_speaker_id
+#       unique_id: sully_speaker_id
+#       state: >
+#         {%if expand(states.media_player) | selectattr('attributes.friendly_name', 'eq',states('sensor.sully_speaker'))  | list | is_defined %}
+#           {% set device =  expand(states.media_player) | selectattr('attributes.friendly_name', 'eq',states('sensor.sully_speaker')) | list | random  %}
+#           {%set device_id = device.entity_id%}
+#         {%else%}
+#           {%set device_id = 'none'%}
+#         {%endif%}
+#         {{device_id}}
+
+# - sensor:
+#     - name: "TTS Greeting"
+#       unique_id: tts_greeting
+#       state: >
+#         {% if now().hour < 12 %}
+#         Good Morning Sir.
+#         {% elif now().hour >= 12 and now().hour < 17 %}
+#         Good Afternoon Sir.
+#         {% else %}
+#         Good Evening Sir.
+#         {% endif %}
+#       attributes:
+#         TTS_name: greeting
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "on"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Confirmation"
+#       unique_id: tts_confirmation
+#       state: >
+#         {{ [
+#           'Okay.',
+#           'If you insist.',
+#           'I am afraid I can not do that,, I am kidding,',
+#           'Leave it to me.',
+#           'As you wish.',
+#           'I am on it.',
+#           'No Problem.',
+#           'Will do.',
+#           'I think I can handle that.',
+#           'Working on it now.',
+#           ', Oh, you were talking to me. Let me take care of that.'
+#           'Why not. It is not like I ever sleep.',
+#           'I am not even supposed to be here today. But whatever.',
+#           'You did not say the magic word. , Oh forget it. I will take care of it.',
+#           'Funny, I was just about to do that.',
+#           ] | random }}
+#       attributes:
+#         TTS_name: confirmation
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "off"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Bedtime"
+#       unique_id: tts_bedtime
+#       state: >
+#         {{ [
+#           'Nighty night.',
+#           'Time for bed fred.',
+#           'don''t let the bed bugs poop on you.',
+#           'Time to hit the hay.',
+#           'I''m exhausted, turning in now.',
+#           'Bed now.',
+#           'Time to get some beauty rest, you need it.',
+#           'Go to sleep, or I will put you to sleep.',
+#           'Lights Out',
+#           'Go to bed, you sleepy head!',
+#           'Sweet dreams'
+#           ] | random }}
+#       attributes:
+#         TTS_name: bedtime
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "on"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Announcement"
+#       unique_id: tts_announcement
+#       state: >
+#         {{ [
+#             'Emergency Alert!',
+#             'We have a problem!',
+#             'You might not like this.',
+#             'There is something that needs your attention.',
+#             'Houston, we have a problem',
+#             'Danger, Danger!'
+#             ] | random }}
+#       attributes:
+#         TTS_name: announcement
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "on"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Interuption"
+#       unique_id: tts_interuption
+#       state: >
+#         {% if 1==2 %}
+#           {{ [
+#               "Ma'am, ",
+#               "Pardon me Ma'am, ",
+#               "Pardon me Kat, ",
+#               "Kat, ",
+#               "I dont mean to interupt Ma'am, ",
+#               ] | random }}
+#         {% elif 1==3 %}
+#           {{ [
+#               'Sir, ',
+#               'Pardon me Sir, ',
+#               'Pardon me Boss, ',
+#               'Boss, ',
+#               'I dont mean to interupt Boss, '
+#               ] | random }}
+#         {% else %}
+#           {{ [
+#               'Pardon me, ',
+#               'Excuse me, ',
+#               'I beg your pardon, ',
+#               'I do not mean to intrude, but, ',
+#               'I am sorry to interrupt, but. ',
+#               'Sir, ',
+#               'Pardon me Sir, ',
+#               'Pardon me Boss, ',
+#               'Boss, ',
+#               'I dont mean to interupt Boss, '
+#             ] | random }}
+#         {% endif %}
+#       attributes:
+#         TTS_name: interuption
+
+# - sensor:
+#     - name: "TTS Time"
+#       unique_id: tts_time
+#       state: >
+#         {% if is_state('binary_sensor.morning','on') %}
+#           Today is {{states.sensor.today_is.state }}, {{ as_timestamp(now()) | timestamp_custom('%B %d %Y') }}. It is {{ now().strftime("%I:%M %p") }}.
+#         {% else %}
+#           It is {{ now().strftime("%I:%M %p") }} .
+#         {% endif %}
+#       attributes:
+#         TTS_name: time
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "on"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Welcome Home"
+#       unique_id: tts_welcome
+#       state: >
+#         {{ [
+#             'Welcome Home!',
+#             'We are glad you are back, or at least Maddox is',
+#             'About time you got home',
+#             'You are back, don''t ever leave me again',
+#             'Home Sweet Home, I see',
+#             'Welcome back, they say there is no place like home, but how would I know I never get to leave.'
+#             ] | random }}
+#       attributes:
+#         TTS_name: welcome
+
+# - sensor:
+#     - name: "TTS Brian Phone Battery Low"
+#       unique_id: tts_brianbatterylow
+#       state: >
+#         {%if states.sensor.motorola_one_5g_ace_battery_level.state|int>30%}
+#           The Battery on your phone is {{states.sensor.motorola_one_5g_ace_battery_level.state}}%, not sure why you wanted me to tell you that.
+#         {%endif%}
+#         {%if states.sensor.motorola_one_5g_ace_battery_level.state|int<=30%}
+#           The Battery on your phone is getting a little low. You might want to charge it.
+#         {%endif%}
+#         {%if states.sensor.motorola_one_5g_ace_battery_level.state|int<=20%}
+#           Seriously you only have {{states.sensor.motorola_one_5g_ace_battery_level.state}}% battery life remaining, charge your phone fool.
+#         {%endif%}
+#         {%if states.sensor.motorola_one_5g_ace_battery_level.state|int<=10%}
+#           OK, {{states.sensor.motorola_one_5g_ace_battery_level.state}}% battery left. Don't complain to me when your phone is dead, then what will you do, stare at the walls.
+#         {%endif%}
+#         {%if states.sensor.motorola_one_5g_ace_battery_level.state|int<=5%}
+#           Hello, are you still alive? Your phone has {{states.sensor.motorola_one_5g_ace_battery_level.state}}% left. If you are dead, your phone is about to be also.
+#         {%endif%}
+#       attributes:
+#         TTS_name: brianbatterylow
+
+# - trigger:
+#     - platform: state
+#       entity_id: script.jarvis_script
+#       to: "off"
+#     - platform: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#   sensor:
+#     - name: "TTS Gametime"
+#       unique_id: tts_gametime
+#       state: >
+#         {{ [
+#           'Time to play some xbox, I see.',
+#           'Eat Sleep Game Fart, Repeat.',
+#           'Playstation, ohh wait I forgot you are one of those xbox fans.',
+#           'up up down down left right left right b a start',
+#           'Gametime',
+#           'Can I play? Do you have an extra controller for me?',
+#           'Back in my day, all we had was pac man',
+#           'Thank You, Mario! But our Princess is in Another Castle!',
+#           'Do you even game, Bro?',
+#           'XBOX',
+#           'Would,,, you,,, like,,, to,,, play,,, a,,, game?',
+#           'Not to be a tattle tale, but Maddox was in here playing your xbox earlier',
+#           'Hello Sir, I''ve been trying to reach you about your car''s extended warranty'
+#           ] | random }}
+#       attributes:
+#         TTS_name: gametime

@@ -1,0 +1,18 @@
+host_ip: !secret emulated_hue_host_ip
+listen_port: 80
+expose_by_default: false
+entities:
+  script.blink_take_snapshot:
+    hidden: false
+  script.play_sleep_music:
+    hidden: false
+  script.alexa_pause_bedroom_tv:
+    hidden: false
+  script.alexa_play_bedroom_tv:
+    hidden: false
+  script.alexa_stop_bedroom_tv:
+    hidden: false
+  script.alexa_turn_on_bedroom_tv:
+    hidden: false
+  script.alexa_turn_off_bedroom_tv:
+    hidden: false

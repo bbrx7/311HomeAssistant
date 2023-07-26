@@ -1,0 +1,854 @@
+###############################################################################
+#   @author         :   Brian Bridger
+#   @date           :   07/17/2023
+#   @package        :   notifications
+#   @description    :   All things notifications
+###############################################################################
+
+###############################################################################
+# jarvis_script is the main script to call for all automations.
+# it will build the message and then pass to appropriate script for that message type
+# it can also call AI conversation process to use an AI generated message
+#
+#   you can pass in any combination of 'who', 'where', 'what' and it will send to every match, you can also pass multiple for each to send the notification multiple places
+#     who:
+#       description: who to send the notification to (for txt debug alert speak or show)
+#     where:
+#       description: where to play notification (area name) (for speak or show)
+#     what:
+#       description: what device to play notification on (media_player friendly_name)(for speak or show)
+#
+# type:
+#   txt - notification to phone or regular notify entity obeys notification toggle for the person
+#   alert - notification to phone or regular notify entity ignores toggle for the person but obeys master text_notifications toggle
+#   debug - notification to phone or regular notify entity obeys text_notifications_debug toggle ignores toggle for the person but obeys master text_notifications toggle
+#   speak - voice or audio message to media_player
+#   show - message to tv (work in progress, not built yet)
+#
+# actionable_event: (optional)
+#   creates an actionable notification (either to amazon echo device or mobile app)
+#   example: alexa_notification_bedroom_tvlights or mobile_notification_garagelights
+#
+# message: (optional)
+#   passed in message
+#
+# include:
+#   predefined message tags, puts in order passed in, for example <greeting> <time> would result in something like "Good Evening Sir. It is 8:30 PM"
+#   must have <message> for passed in message to be used
+#   possible tags: <greeting> <confirmation> <interuption> <announcement> <time> <welcome> <bedtime>
+#                 <gametime> <brianbatterylow> <customai> <message> <audio> <video> <image>
+#
+# custom_ai_prompt: (optional)
+#   prompt to send to ai to generate a message
+#   example: tell me the weather
+# custom_ai_agent: (optional)
+#   if you want a certain ai agent to answer (when one handles certain things better than others)
+#
+# image: (optional)
+#   image to attach or show
+#
+# video: (optional)
+#   video to attach or play
+#
+# audio: (optional)
+#   audio to attach or play
+###############################################################################
+
+# notification toggles (master, debug and one for each person)
+input_boolean:
+  text_notifications:
+    name: Master switch for notifications
+    icon: mdi:cellphone-message
+  text_notifications_brian:
+    name: Send Notifications to Brian
+    icon: mdi:cellphone-message
+  text_notifications_sully:
+    name: Send Notifications to Sully
+    icon: mdi:cellphone-message
+  text_notifications_debug:
+    name: Send Debug Notifications
+    icon: mdi:cellphone-message
+
+# media players to play 'speak' notification on (should be one per area you want to be notified in)
+group:
+  notification_speakers:
+    entities:
+      - media_player.bedroom_echo
+      - media_player.garage_speaker
+      - media_player.sully_speaker
+      - media_player.outside_speakers
+      - media_player.kitchen_speaker
+
+  # media players to play 'show' notification on (should be one per area you want to be notified in)
+  notification_tvs:
+    entities:
+      - media_player.bedroom_tv
+      - media_player.living_room_tv
+      - media_player.xbox
+
+  # music assistant version of media player (if you use media assistant to play music)
+  musicassistant_speakers:
+    entities:
+      - media_player.garage_speaker_ma
+      - media_player.sully_speaker_ma
+      - media_player.outside_speakers_ma
+      - media_player.kitchen_speaker_ma
+      - media_player.xbox_ma
+
+sensor:
+  - platform: template
+    sensors:
+      # define room for each person, used when 'who' is passed in for 'speak' notification
+      # for now I just use router phone is connected to and guess which room I'm likely in, eventually will set up better presence detection like espresense
+      brian_room:
+        unique_id: brian_room
+        friendly_name: brian_room
+        icon_template: mdi:home-map-marker
+        value_template: >
+          {%if is_state('binary_sensor.brian_home','on')%}
+            {%if is_state('input_boolean.mechanic_mode_boolean','on')%}
+              Garage 
+            {%elif states('media_player.bedroom_tv') | lower == 'playing' and state_attr('media_player.bedroom_tv','media_title') is not search('sleep', ignorecase=True)%}
+              Bedroom                   
+            {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'ohhnomrbill'%}
+              Bedroom     
+            {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'garage'%}
+              Outside    
+            {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'im all jacked up on mt dew'%}
+              Kitchen
+            {%elif states('sensor.motorola_one_5g_ace_wifi_connection') |lower == 'allmixedup'%}
+              Bathroom        
+            {%else%}
+              Unknown
+            {%endif%}
+          {%else%}
+            {{states('person.brian')}}
+          {%endif%}
+
+      # define room for each person, used when 'who' is passed in for 'speak' notification
+      # for now just set to his room
+      sully_room:
+        unique_id: sully_room
+        friendly_name: sully_room
+        icon_template: mdi:home-map-marker
+        value_template: >
+          {%if is_state('binary_sensor.sully_home','on')%}
+              Sully's Room
+          {% else %}
+            {{states('person.sully')}}
+          {%endif%}
+
+script:
+  # main script which defines the message and then calls appropriate notification script
+  jarvis_script:
+    mode: parallel
+    max: 20
+    alias: Jarvis Script
+    fields:
+      who:
+        description: who to send the notification to
+        example: brian sully all
+        default: ""
+      where:
+        description: where to play notification (area name) (for speak or show)
+        example: bedroom kitchen garage livingroom sully_s_room all
+        default: ""
+      what:
+        description: what device to play notification on (media_player friendly_name)(for speak or show)
+        example:
+          "bedroom_speaker kitchen_speaker garage_speaker livingroom_tv sully_speaker
+          all    "
+        default: ""
+      type:
+        description: type of notification
+        example: txt alert debug speak show
+        default: ""
+      actionable_event:
+        description: event id (to make this an actionable notification)
+        example: alexa_notification_bedroom_tvlights or mobile_notification_garagelights
+        default: ""
+      message:
+        description: The message content
+        example: The light is on!
+        default: ""
+      include:
+        description: Jarvis parts to include in message (in order you want to be in)
+        example:
+          <greeting> <confirmation> <interuption> <announcement> <time> <welcome> <bedtime> <gametime> <brianbatterylow>
+          <customai> <message> <audio> <video> <image>
+        default: ""
+      custom_ai_prompt:
+        example: tell me the weather
+        default: ""
+      custom_ai_agent:
+        example: OpenAI or Google
+        default: ""
+      image:
+        description: url to attach
+        example: /media/snapshots/blink_image_20230618_213844.jpg
+        default: ""
+      video:
+        description: url to attach
+        example: /media/samplevideo.mp4
+        default: ""
+      audio:
+        description: url to attach
+        example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
+        default: ""
+    sequence:
+      - variables:
+          alias: set defaults and Define AI agent #look up IDs by calling 'Conversation: Process' service under developer tools
+          who: "{{who | default('brian') }}"
+          where: "{{where | default('') }}"
+          what: "{{what | default('') }}"
+          type: "{{type | default('txt') }}"
+          actionable_event: "{{actionable_event | default('') }}"
+          message: "{{message | default('no message passed in') }}"
+          include: "{{include | default('<message>') }}"
+          custom_ai_prompt: "{{custom_ai_prompt | default('') }}"
+          custom_ai_agent: "{{custom_ai_agent | default('') }}"
+          image: "{{image | default('') }}"
+          video: "{{video | default('') }}"
+          audio: "{{audio | default('') }}"
+          ai_agent: >
+            {%if (custom_ai_agent | string | slugify(separator='')) == ('OpenAI' | slugify(separator='')) or (custom_ai_agent | string | slugify(separator='')) == ('ChatGPT' | slugify(separator=''))%}
+              {{'df20be275be33c144bee45dec9f62179'}}
+            {%elif (custom_ai_agent | string | slugify(separator='')) == ('Google' | slugify(separator='')) or (custom_ai_agent | string | slugify(separator='')) == ('GoogleAI' | slugify(separator=''))%}
+              {{'a11638b3df9c5ac1d6a68cc664601175'}}              
+            {%else%}
+              {{['a11638b3df9c5ac1d6a68cc664601175', 'df20be275be33c144bee45dec9f62179',] | random }}
+            {%endif%}
+      - if:
+          - condition: template
+            alias: welcome message included
+            value_template: "{{include is search('<welcome>', ignorecase=True)}}"
+          - condition: template
+            alias: 20% chance of using AI
+            value_template: "{{range(1, 100) | random <=20}}"
+        then:
+          - service: conversation.process
+            alias: Ask AI for welcome home message
+            data:
+              agent_id: "{{ai_agent}}"
+              text: tell me welcome home in a sarcastic and snarky way
+            response_variable: welcomegeneratedmessage
+      - if:
+          - condition: template
+            alias: brianbatterylow message included
+            value_template: "{{include is search('<brianbatterylow>', ignorecase=True)}}"
+          - condition: template
+            alias: 20% chance of using AI
+            value_template: "{{range(1, 100) | random <=20}}"
+        then:
+          - service: conversation.process
+            alias: Ask AI for battery low message
+            data:
+              agent_id: "{{ai_agent}}"
+              text: "tell me my phone battery is low and should be charged in a sarcastic and snarky way. Battery Percentage: {{states('sensor.motorola_one_5g_ace_battery_level')}}"
+            response_variable: batterygeneratedmessage
+      - if:
+          - condition: template
+            alias: bedtime message included
+            value_template: "{{include is search('<bedtime>', ignorecase=True)}}"
+          - condition: template
+            alias: 20% chance of using AI
+            value_template: "{{range(1, 100) | random <=20}}"
+        then:
+          - service: conversation.process
+            alias: Ask AI for bedtime message
+            data:
+              agent_id: "{{ai_agent}}"
+              text: "tell me it is bedtime in a sarcastic and snarky way. the current time is {{now().strftime('%I:%M %p')}}"
+            response_variable: bedtimegeneratedmessage
+      - if:
+          - condition: template
+            alias: gametime message included
+            value_template: "{{include is search('<gametime>', ignorecase=True)}}"
+          - condition: template
+            alias: 10% chance of using AI
+            value_template: "{{range(1, 100) | random <=10}}"
+        then:
+          - service: conversation.process
+            alias: Ask AI for gametime message
+            data:
+              agent_id: "{{ai_agent}}"
+              text: >
+                {{[
+                    'talk to me about playing video games',
+                    'tell me a story about my most relaxed chill awesome dog Cosmo',
+                    'write a song about my most relaxed chill awesome dog Cosmo',    
+                    ] | random}} 
+                in a sarcastic snarky way
+            response_variable: gametimegeneratedmessage
+      - if:
+          - condition: template
+            alias: gametime message included
+            value_template: "{{include is search('<customai>', ignorecase=True) and custom_ai_prompt!=''}}"
+        then:
+          - service: conversation.process
+            alias: Ask AI for gametime message
+            data:
+              agent_id: "{{ai_agent}}"
+              text: "{{custom_ai_prompt}}"
+            response_variable: customaigeneratedmessage
+      - variables:
+          alias: Define variable jarvismessage
+          jarvismessage: >
+            {%set outputmessage=include%} 
+
+            {# if we pulled an ai message, get the txt from the response#}
+            {%if welcomegeneratedmessage is defined%}
+              {%set aiwelcome=welcomegeneratedmessage.response.speech.plain.speech%}
+            {%else%}
+              {%set aiwelcome=''%}
+            {%endif%}
+            {%if batterygeneratedmessage is defined%}
+              {%set aibattery=batterygeneratedmessage.response.speech.plain.speech%}
+            {%else%}
+              {%set aibattery=''%}
+            {%endif%}
+            {%if bedtimegeneratedmessage is defined%}
+              {%set aibedtime=bedtimegeneratedmessage.response.speech.plain.speech%}
+            {%else%}
+              {%set aibedtime=''%}
+            {%endif%}
+            {%if gametimegeneratedmessage is defined%}
+              {%set aigametime=gametimegeneratedmessage.response.speech.plain.speech%}
+            {%else%}
+              {%set aigametime=''%}
+            {%endif%}
+            {%if customaigeneratedmessage is defined%}
+              {%set aicustom=customaigeneratedmessage.response.speech.plain.speech%}
+            {%else%}
+              {%set aicustom=''%}
+            {%endif%}
+
+            {#add parts of the message defined in the 'include' variable#}
+
+            {#if <greeting> included add to outputmessage#}
+            {%if include is search('<greeting>', ignorecase=True)%}
+              {%if now().hour < 12%}
+                {% set greeting='Good Morning Sir.' %}
+              {%elif now().hour >= 12 and now().hour < 17 %}
+                {% set greeting='Good Afternoon Sir.' %}
+              {%else%}
+                {%set greeting='Good Evening Sir.'%}
+              {%endif%}
+              {%set outputmessage = (outputmessage|regex_replace(find='<greeting>',replace=greeting , ignorecase=True))%}
+            {%endif%} 
+
+            {#if <time> included add to outputmessage#}
+            {%if include is search('<time>',ignorecase=True)%}
+              {%if is_state('binary_sensor.morning','on') %}
+                {%set time='Today is ' + states.sensor.today_is.state + ', ' + as_timestamp(now()) | timestamp_custom('%B %d %Y') +'. It is '+ now().strftime('%I:%M %p')%}
+              {% else %}
+                {% set time='It is '+ now().strftime('%I:%M %p') %}
+              {% endif %}
+              {%set outputmessage = (outputmessage|regex_replace(find='<time>', replace=time, ignorecase=True))%}
+            {%endif%}
+
+            {#if <confirmation> included add to outputmessage#}
+            {%if include is search('<confirmation>',ignorecase=True)%}
+              {%set confirmation=[
+                                    'Okay.',
+                                    'If you insist.',
+                                    'I am afraid I can not do that,, I am kidding,',
+                                    'Leave it to me.',
+                                    'As you wish.',
+                                    'I am on it.',
+                                    'No Problem.',
+                                    'Will do.',
+                                    'I think I can handle that.',
+                                    'Working on it now.',
+                                    ', Oh, you were talking to me. Let me take care of that.'
+                                    'Why not. It is not like I ever sleep.',
+                                    'I am not even supposed to be here today. But whatever.',
+                                    'You did not say the magic word. , Oh forget it. I will take care of it.',
+                                    'Funny, I was just about to do that.',
+                                ] | random %}
+              {%set outputmessage = (outputmessage|regex_replace(find='<confirmation>', replace=confirmation , ignorecase=True))%}
+            {%endif%}
+
+            {#if <bedtime> included add to outputmessage#}
+            {%if include is search('<bedtime>',ignorecase=True) %}
+              {%if aibedtime != ''%}
+                {%set outputmessage = (outputmessage|regex_replace(find='<bedtime>', replace=aibedtime , ignorecase=True))%}
+              {%else%}
+                {%set bedtime=[
+                                    'Nighty night.',
+                                    'Time for bed fred.',
+                                    'don''t let the bed bugs poop on you.',
+                                    'Time to hit the hay.',
+                                    'I''m exhausted, turning in now.',
+                                    'Bed now.',
+                                    'Time to get some beauty rest, you need it.',
+                                    'Go to sleep, or I will put you to sleep.',
+                                    'Lights Out',
+                                    'Go to bed, you sleepy head!',
+                                    'Sweet dreams'
+                              ] | random %}
+                {%set outputmessage = (outputmessage|regex_replace(find='<bedtime>',replace=bedtime , ignorecase=True))%}
+              {%endif%}
+            {%endif%}
+
+            {#if <announcement> included add to outputmessage#}
+            {%if include is search('<announcement>', ignorecase=True)%}
+              {% set announcement=[
+                                    'Emergency Alert!',
+                                    'We have a problem!',
+                                    'You might not like this.',
+                                    'There is something that needs your attention.',
+                                    'Houston, we have a problem',
+                                    'Danger, Danger!'
+                                  ] | random %}
+              {%set outputmessage = (outputmessage|regex_replace(find='<announcement>',replace=announcement, ignorecase=True))%}
+            {%endif%}
+
+            {#if <interuption> included add to outputmessage#}
+            {%if include is search('<interuption>',ignorecase=True)%}
+              {%set interuption= [
+                                    'Pardon me, '
+                                    'Excuse me, ',
+                                    'I beg your pardon, ',
+                                    'I do not mean to intrude, but, ',
+                                    'I am sorry to interrupt, but. ',
+                                    'Sir,',
+                                    'Pardon me Sir, ',
+                                    'Pardon me Boss, ',
+                                    'Boss,',
+                                    'I dont mean to interupt Boss, '
+                                  ] | random %}
+              {%set outputmessage = (outputmessage|regex_replace(find='<interuption>', replace=interuption, ignorecase=True))%}
+            {%endif%}
+
+            {#if <welcome> included add to outputmessage#}
+            {%if include is search('<welcome>',ignorecase=True)%}
+              {%if aiwelcome != ''%}
+                {%set outputmessage = (outputmessage|regex_replace(find='<welcome>',replace=aiwelcome, ignorecase=True))%}
+              {%else%}
+                {%set welcome=[
+                                    'Welcome Home!',
+                                    'We are glad you are back, or at least Maddox is',
+                                    'About time you got home',
+                                    'You are back, don''t ever leave me again',
+                                    'Home Sweet Home, I see',
+                                    'Welcome back, they say there is no place like home, but how would I know I never get to leave.'
+                              ] | random %}
+                {%set outputmessage = (outputmessage|regex_replace(find='<welcome>',replace=welcome , ignorecase=True))%}
+              {%endif%}
+            {%endif%}
+
+            {#if <gametime> included add to outputmessage#}
+            {%if include is search('<gametime>', ignorecase=True) %}
+              {%if aigametime != ''%}
+                {%set outputmessage = (outputmessage|regex_replace(find='<gametime>',replace=aigametime , ignorecase=True))%}
+              {%else%}
+                {%set gametime=[
+                                    'Time to play some xbox, I see.',
+                                    'Eat Sleep Game Fart, Repeat.',
+                                    'Playstation, ohh wait I forgot you are one of those xbox fans.',
+                                    'up up down down left right left right b a start',
+                                    'Gametime',
+                                    'Can I play? Do you have an extra controller for me?',
+                                    'Back in my day, all we had was pac man',
+                                    'Thank You, Mario! But our Princess is in Another Castle!',
+                                    'Do you even game, Bro?',
+                                    'XBOX',
+                                    'Would,,,you,,, like,,, to,,, play,,, a,,, game?',
+                                    'Not to be a tattle tale, but Maddox was in here playing your xbox earlier',
+                                    'Hello Sir, I''ve been trying to reach you about your car''s extended warranty',
+                                    'I just went to the bathroom it was pooptacular',
+                                    "Excuse me sir, before you start playing, why don't you go give Cosmo a hug. I am quite certain he would love that.",
+                                    'You probably already know this, but, that Dixie, she cray cray',
+                                    "So your gonna' tell me that you don't have no black cats, no roman candles, or screaming mimis?
+                                      Oh come on man. You got no lady fingers, fuzz buttles, snicker bombs, church burners, finger blasters, gut busters, zippity do das, or crap flappers?
+                                      You're gonna stand there, owning a fireworks stand, and tell me you don't have no whistling bungholes, no spleen spliters, whisker biscuits, honkey lighters, hoosker doos, hoosker donts, cherry bombs, nipsy daisers, with or without the scooter stick, or one single whistling kitty chaser?
+                                    ",
+                                    "I'm gonna come at you like a spider monkey! I'm all jacked up on Mountain Dew!",
+                                    "I made lots of robuts in my day! Like when my wife left me and I created a homicidal pterodactyl-tron, or when my pal Ernie didn't come to my retirement party and I constructed an eighty ton SHAME BOT THAT EXPLODED THE ENTIRE DOWNTOWN AREA! -laughs- Well, time to get back to work on my death ray! Any of you kids got a screwdriver?",
+                                    "You know, studies show that keeping a ladder in the house is more dangerous than a loaded gun. That's why I own ten guns: in case some maniac tries to sneak in a ladder!",
+                                ] | random %}
+                {%set outputmessage = (outputmessage|regex_replace(find='<gametime>', replace=gametime, ignorecase=True))%}
+              {%endif%}
+            {%endif%}
+
+            {#if <brianbatterylow> included add to outputmessage#}
+            {%if include is search('<brianbatterylow>',ignorecase=True)%}
+              {%if aibattery != ''%}
+                {%set outputmessage = (outputmessage|regex_replace(find='<brianbatterylow>', replace=aibattery, ignorecase=True)) %}
+              {%else%}
+                {%if states.sensor.motorola_one_5g_ace_battery_level.state|int>30%}
+                  {%set brianbatterylow ='The Battery on your phone is '+states.sensor.motorola_one_5g_ace_battery_level.state+'%, not sure why you wanted me to tell you that.'%}
+                {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=30%}
+                  {%set brianbatterylow ='The Battery on your phone is getting a little low. You might want to charge it.'%}
+                {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=20%}
+                  {%set brianbatterylow ='Seriously you only have '+states.sensor.motorola_one_5g_ace_battery_level.state+'% battery life remaining, charge your phone fool.'%}
+                {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=10%}
+                  {%set brianbatterylow ="OK, "+states.sensor.motorola_one_5g_ace_battery_level.state+"% battery left. Don't complain to me when your phone is dead, then what will you do, stare at the walls." %}
+                {%elif states.sensor.motorola_one_5g_ace_battery_level.state|int<=5%}\n
+                  {%set brianbatterylow ='Hello, are you still alive? Your phone has '+states.sensor.motorola_one_5g_ace_battery_level.state+'% left. If you are dead, your phone is about to be also.' %}
+                {%endif%}
+                {%set outputmessage = (outputmessage|regex_replace(find='<brianbatterylow>', replace=brianbatterylow, ignorecase=True)) %}
+              {%endif%}
+            {%endif%}
+
+            {#if <customai> included add generated ai output to outputmessage#}
+            {%if include is search('<customai>',ignorecase=True)%}
+              {%set outputmessage = (outputmessage|regex_replace(find='<customai>',replace=aicustom, ignorecase=True))%}
+            {%endif%}
+
+            {#if <message> included add passed in 'message' to outputmessage#}
+            {%if include is search('<message>',ignorecase=True)%}
+              {%set outputmessage = (outputmessage|regex_replace(find='<message>',replace=message, ignorecase=True))%}
+            {%endif%}
+
+            {{outputmessage}}
+
+      - if:
+          - condition: template
+            alias: Phone Notifications
+            value_template:
+              "{{type is search('txt', ignorecase=True) or type is search('alert',ignorecase=True)
+              or type is search('debug', ignorecase=True)}}"
+        then:
+          - service: script.notification_phone
+            data:
+              who: "{{who}}"
+              type: "{{type}}"
+              actionable_event: "{{actionable_event}}"
+              message: "{{jarvismessage}}"
+              audio: "{{audio}}"
+              image: "{{image}}"
+              video: "{{video}}"
+      - if:
+          - condition: template
+            alias: Speaker Notifications
+            value_template: "{{type is search('speak', ignorecase=True)}}"
+        then:
+          - service: script.notification_speaker
+            data:
+              who: "{{who}}"
+              where: "{{where}}"
+              what: "{{what}}"
+              actionable_event: "{{actionable_event}}"
+              message: "{{jarvismessage}}"
+              audio: "{{audio}}"
+      - if:
+          - condition: template
+            alias: TV Notifications
+            value_template: "{{type is search('show', ignorecase=True)}}"
+        then: [] #don't have a good use case for showing a notification on a tv yet, so I haven't built this part out yet
+
+  notification_speaker:
+    alias: Notification - Speaker
+    mode: parallel
+    max: 20
+    fields:
+      who:
+        description: who to send the notification to
+        example: brian sully all
+      where:
+        description: where to play notification (for speak or show)
+        example: bedroom kitchen garage livingroom sully_s_room all
+      what:
+        description: what device to play notification on(for speak or show)
+        example:
+          "bedroom_speaker kitchen_speaker garage_speaker livingroom_tv sully_speaker
+          all      "
+      actionable_event:
+        description: event id (to make this an actionable notification)
+        example: alexa_notification_bedroom_tvlights
+      message:
+        description: The message content
+        example: The light is on!
+      audio:
+        description: url to attach
+        example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
+    sequence:
+      - variables:
+          mediaplayerlist: "{{states.media_player|map(attribute='entity_id')|list}}"
+      # loop through media players to find ones that match out who or where or what
+      - repeat:
+          count: "{{mediaplayerlist| count}}"
+          sequence:
+            # get info for media_player
+            - variables:
+                mediaplayer: "{{mediaplayerlist[repeat.index - 1]}}"
+                mediaplayername: "{{state_attr(mediaplayer,'friendly_name') | slugify(separator='_')}}"
+                mediaplayerroom: "{{iif(area_id(mediaplayer) is none, 'noroom', area_id(mediaplayer) | string) }}"
+                roomquiethourentity: "{{'binary_sensor.'+(area_id(mediaplayer) | string)+'_quiet_hours'}}"
+                musicassistantplayer: "{{mediaplayerlist[repeat.index - 1] +'_ma'}}" # if you use music assistant to play music, I just have mine named the same as my regular media player with _ma afterwards
+                mywhere: "{{where}}"
+                condition2a: "{{where is search(mediaplayerroom, ignorecase=True) }}"
+                condition2b: "{{expand('group.notification_speakers') | map(attribute='entity_id') | list | contains(mediaplayer)}}"
+                condition: >
+                  {{where is search(mediaplayerroom, ignorecase=True) 
+                  and expand('group.notification_speakers') | map(attribute='entity_id') | list | contains(mediaplayer)}}
+            - condition: template
+              alias: Check if master quiet hours is off
+              value_template: "{{states('binary_sensor.quiet_hours') == 'off'}}"
+            - condition: or
+              alias: Check if this media_player in our where or what or who
+              conditions:
+                - condition: template
+                  alias: if media player name in 'what' then send to speaker or what = all
+                  value_template: >
+                    {{(mediaplayername | length > 0 and what is search(mediaplayername,ignorecase=True))
+                    or what is search('all', ignorecase=True)}}
+                - condition: template
+                  alias: if media player room in 'where' and media player in notification_speakers group then send to speaker
+                  value_template: >
+                    {{where is search(mediaplayerroom, ignorecase=True) 
+                    and expand('group.notification_speakers') | map(attribute='entity_id') | list | contains(mediaplayer)}}
+                - condition: template
+                  alias: if media player room is 'who's room and media player in notification_speakers group then send to speaker
+                  value_template: >
+                    {%set dev = namespace(isroom=false)%}
+                    {%set peoplelist = states.person | map(attribute='object_id') | list%} 
+                    {%for person in peoplelist%}
+                      {%if who is search(person, ignorecase=True) or who is search('all', ignorecase=True)%}
+                        {%set room = states('sensor.'+person+'_room')%}
+                        {%if room | slugify(separator='_')==mediaplayerroom | slugify(separator='_')%}
+                          {% set dev.isroom = true%}
+                        {%endif%}
+                      {%endif%}
+                    {%endfor%}
+                    {{dev.isroom and expand('group.notification_speakers')  | map(attribute='entity_id') | list | contains(mediaplayer)}}
+            - condition: template
+              alias: Check if quiet hours is off for room
+              value_template: "{{states(roomquiethourentity) != 'on'}}"
+            - variables:
+                alias: get current status and volume of media player (to attempt to restart music and set volume back to original)
+                player_isPlaying: "{{is_state(mediaplayer, 'playing')}}"
+                player_volume: "{{state_attr(mediaplayer,'volume_level')}}"
+            - service: media_player.media_pause
+              alias: pause anything currently playing
+              target:
+                entity_id: "{{mediaplayer}}"
+              enabled: true
+            - service: media_player.volume_set
+              alias: set volume for notification
+              data:
+                volume_level: 0.8
+              target:
+                entity_id: "{{mediaplayer}}"
+            - choose:
+                - conditions:
+                    - condition: template
+                      alias: Echo - Actionable TTS
+                      value_template:
+                        "{{mediaplayer is search('echo', ignorecase=True) and
+                        (audio is not defined or audio =='') and (actionable_event is defined
+                        and actionable_event!='')}}"
+                  sequence:
+                    - service: script.alexa_actionable_notification
+                      data_template:
+                        text: "{{ message }}"
+                        event_id: "{{actionable_event}}"
+                        alexa_device: "{{mediaplayer}}"
+                        suppress_confirmation: true
+                - conditions:
+                    - condition: template
+                      alias: Echo - Actionable Audio File
+                      value_template: >
+                        {{mediaplayer is search('echo', ignorecase=True) and
+                        (audio is defined and audio!='') and (actionable_event is defined and
+                        actionable_event!='')}}
+                  sequence:
+                    - service: media_player.play_media
+                      target:
+                        entity_id: "{{mediaplayer}}"
+                      data:
+                        media_content_type: sound
+                        media_content_id: "{{audio}}"
+                    - delay:
+                        hours: 0
+                        minutes: 0
+                        seconds: 10
+                        milliseconds: 0
+                    - service: script.alexa_actionable_notification
+                      data_template:
+                        text: "{{message}}"
+                        event_id: "{{actionable_event}}"
+                        alexa_device: "{{mediaplayer}}"
+                - conditions:
+                    - condition: template
+                      alias: Echo - Non Actionable TTS
+                      value_template: >
+                        {{mediaplayer is search('echo', ignorecase=True) and (audio is not defined or audio =='') 
+                        and (actionable_event is not defined or actionable_event=='')}}
+                  sequence:
+                    - service: notify.alexa_media
+                      data:
+                        title: Jarvis
+                        message: "{{message}}"
+                        target: "{{mediaplayer}}"
+                        data:
+                          method: all
+                          type: announce
+                - conditions:
+                    - condition: template
+                      alias: Echo - Non Actionable Audio File
+                      value_template: >
+                        {{mediaplayer is search('echo', ignorecase=True) and (audio is defined and audio!='') 
+                        and (actionable_event is not defined or actionable_event=='')}}
+                  sequence:
+                    - service: media_player.play_media
+                      target:
+                        entity_id: media_player.bedroom_echo
+                      data:
+                        media_content_type: sound
+                        media_content_id: "{{audio}}"
+                - conditions:
+                    - condition: template
+                      alias: Media Player - TTS
+                      value_template: "{{audio is not defined or audio ==''}}"
+                  sequence:
+                    - service: tts.speak
+                      data:
+                        media_player_entity_id: "{{mediaplayer}}"
+                        message: "{{message}}"
+                        cache: true
+                      target:
+                        entity_id: tts.google_en_ie
+                - conditions:
+                    - condition: template
+                      alias: Media Player - Audio
+                      value_template: "{{(audio is defined and audio!='')}}"
+                  sequence:
+                    - service: media_player.play_media
+                      target:
+                        entity_id: "{{mediaplayer}}"
+                      data:
+                        media_content_type: music
+                        media_content_id: "{{audio}}"
+            - if:
+                - condition: template
+                  alias: if we have a music assistant version of media player, reset volume and restart music if it was playing
+                  value_template: "{{expand('group.musicassistant_speakers') | map(attribute='entity_id')| list | contains(musicassistantplayer)}}"
+                - condition: template
+                  value_template: "{{player_isPlaying==True}}"
+                  alias: if it was playing before the notification
+              then:
+                - service: media_player.volume_set
+                  data:
+                    volume_level: "{{player_volume}}"
+                  target:
+                    entity_id: "{{musicassistantplayer}}"
+                - wait_template: "{{is_state(mediaplayer, 'idle')}}"
+                  continue_on_timeout: true
+                  timeout: "60"
+                - service: media_player.media_play
+                  target:
+                    entity_id: "{{musicassistantplayer}}"
+
+  notification_phone:
+    alias: Notification - Phone
+    fields:
+      who:
+        description: who to send the notification to
+        example: brian sully all
+      type:
+        description: type of notification
+        example: txt alert debug
+      actionable_event:
+        description: event id (to make this an actionable notification)
+        example: alexa_notification_bedroom_tvlights
+      message:
+        description: The message content
+        example: The light is on!
+      image:
+        description: url to attach
+        example: /media/snapshots/blink_image_20230618_213844.jpg
+      video:
+        description: url to attach
+        example: /media/samplevideo.mp4
+      audio:
+        description: url to attach
+        example: /media/sounds/xbox_series_x.mp3 or horror_10 (for amazon echo)
+    sequence:
+      - variables:
+          peoplelist: "{{states.person | map(attribute='object_id') | list}}"
+      - repeat:
+          count: "{{peoplelist| count}}"
+          sequence:
+            - variables:
+                alias: get info about person
+                person: "{{peoplelist[repeat.index - 1]}}"
+                txtnotification_entity: input_boolean.text_notifications_{{person}}
+                service_entity: notify.notify_{{person}}
+            - condition: template
+              alias: Check if master switch for notifications is turned on
+              value_template: "{{states('input_boolean.text_notifications') == 'on'}}"
+            - condition: template
+              alias: Check if who contains person or who contains all
+              value_template: "{{who is search(person, ignorecase=True) or who is search('all', ignorecase=True)}}"
+            - condition: template
+              alias: Check if notification turned on for user or it is an alert or it is debug and debug is turned on
+              value_template: >
+                {{(type is search('txt', ignorecase=True) and states(txtnotification_entity) == 'on')
+                   or type is search('alert', ignorecase=True) or (type is search('debug', ignorecase=True) and states('input_boolean.text_notifications_debug') =='on')}}
+            - choose:
+                - conditions:
+                    - condition: template
+                      alias: Actionable
+                      value_template: "{{ (actionable_event is defined and actionable_event!='')}}"
+                  sequence:
+                    - service: "{{service_entity}}"
+                      data:
+                        message: "{{message}}"
+                        data:
+                          image: "{{image}}"
+                          video: "{{video}}"
+                          actions:
+                            - action: "{{actionable_event}}_YES"
+                              title: "Yes"
+                            - action: "{{actionable_event}}_NO"
+                              title: "No"
+                - conditions:
+                    - condition: template
+                      value_template: "{{(actionable_event is not defined or actionable_event=='')}}"
+                      alias: Non Actionable
+                  sequence:
+                    - service: "{{service_entity}}"
+                      data:
+                        message: "{{message}}"
+                        data:
+                          image: "{{image}}"
+                          video: "{{video}}"
+              alias: Actionable or Non Actionable
+
+  alexa_actionable_notification:
+    alias: Alexa Actionable Notification
+    description: Activates an actionable notification on a specific echo device
+    #### see https://github.com/keatontaylor/alexa-actions for setting up actionable events with Alexa
+    #### I added mediaplayer_entity into the skill so I can pass it in and then pass it back with the response,
+    #### that way I can follow up with a custom confirmation on the same device
+    #### create an automation to listen for the event_id you passed here
+    fields:
+      text:
+        description: The text you would like alexa to speak.
+        example: What would you like the thermostat set to?
+      event_id:
+        description: Correlation ID for event responses
+        example: ask_for_temperature
+      alexa_device:
+        description: Alexa device you want to trigger
+        example: media_player.bedroom_echo
+      suppress_confirmation:
+        description: Set true if you want to suppress 'okay' confirmation
+        example: "true"
+    sequence:
+      - service: input_text.set_value
+        data_template:
+          entity_id: input_text.alexa_actionable_notification
+          value:
+            '{"text": "{{ text }}", "event": "{{ event_id }}", "suppress_confirmation":
+            "{{ suppress_confirmation }}", "mediaplayer_entity": "{{ alexa_device }}"
+            }'
+      - service: media_player.play_media
+        data_template:
+          entity_id: "{{ alexa_device }}"
+          media_content_type: skill
+          media_content_id: amzn1.ask.skill.cc4ec8c4-4659-40ee-b12a-69e3d9f910a7
+    mode: single
