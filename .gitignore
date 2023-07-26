@@ -14,5 +14,3 @@ secrets.yaml
 service_account.json
 templatetests.txt
 watchman_report.txt
-known_devices.yaml
-frigate.yaml
