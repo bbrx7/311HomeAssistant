@@ -1,119 +1,118 @@
 play_sleep_music:
   alias: Cast sleep music
   sequence:
-    - service: script.jarvis_script
+  - service: script.jarvis_script
+    data:
+      where: bedroomspeaker
+      type: speak
+      include: <bedtime>
+  - type: turn_off
+    device_id: 83fb8e68db50634011416b31bf0a52bb
+    entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
+    domain: switch
+  - service: light.turn_off
+    data: {}
+    target:
+      entity_id: light.smart_bulb
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - if:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: media_player.bedroom_tv
+        state: playing
+    then:
+    - service: media_player.play_media
       data:
-        where: bedroomspeaker
-        type: speak
-        include: <bedtime>
-    - type: turn_off
-      device_id: 83fb8e68db50634011416b31bf0a52bb
-      entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
-      domain: switch
-    - service: light.turn_off
-      data: {}
+        media_content_type: cast
+        media_content_id: ' { "app_name": "youtube", "media_id": "oT9Ycli_z4o" }'
+        enqueue: replace
       target:
-        entity_id: light.smart_bulb
+        entity_id: media_player.bedroom_tv
+    - service: media_player.volume_set
+      data:
+        volume_level: 0.01
+      target:
+        entity_id: media_player.bedroom_tv
     - delay:
         hours: 0
         minutes: 0
-        seconds: 1
+        seconds: 30
         milliseconds: 0
-    - if:
-        - condition: not
-          conditions:
-            - condition: state
-              entity_id: media_player.bedroom_tv
-              state: playing
-      then:
-        - service: media_player.play_media
-          data:
-            media_content_type: cast
-            media_content_id: ' { "app_name": "youtube", "media_id": "oT9Ycli_z4o" }'
-            enqueue: replace
-          target:
-            entity_id: media_player.bedroom_tv
-        - service: media_player.volume_set
-          data:
-            volume_level: 0.01
-          target:
-            entity_id: media_player.bedroom_tv
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 30
-            milliseconds: 0
-        - service: media_player.media_seek
-          data:
-            seek_position: 1790
-          target:
-            entity_id: media_player.bedroom_tv
-        - service: timer.start
-          data: {}
-          target:
-            entity_id: timer.sleep_music_turn_off_timer
-    - service: media_player.play_media
+    - service: media_player.media_seek
       data:
-        media_content_type: custom
-        media_content_id: turn off the screen
+        seek_position: 1790
       target:
-        entity_id: media_player.bedroom_echo
+        entity_id: media_player.bedroom_tv
+    - service: timer.start
+      data: {}
+      target:
+        entity_id: timer.sleep_music_turn_off_timer
+  - service: media_player.play_media
+    data:
+      media_content_type: custom
+      media_content_id: turn off the screen
+    target:
+      entity_id: media_player.bedroom_echo
   mode: queued
 blink_take_snapshot:
   alias: Blink Take Snapshot
   sequence:
-    - service: blink.trigger_camera
-      data: {}
-      target:
-        entity_id: camera.camera
-    - delay: 00:00:05
-    - service: blink.blink_update
-      data: {}
-    - service: camera.snapshot
-      target:
-        entity_id: camera.camera
-      data:
-        filename: /media/blink/blink_image_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
-    - service: input_datetime.set_datetime
-      data:
-        datetime:
-          "{{((as_timestamp(state_attr('script.blink_take_snapshot', 'last_triggered'))
-          | timestamp_local ) ) }}"
-      target:
-        entity_id: input_datetime.last_blink_snapshot
+  - service: blink.trigger_camera
+    data: {}
+    target:
+      entity_id: camera.camera
+  - delay: 00:00:05
+  - service: blink.blink_update
+    data: {}
+  - service: camera.snapshot
+    target:
+      entity_id: camera.camera
+    data:
+      filename: /media/blink/blink_image_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg
+  - service: input_datetime.set_datetime
+    data:
+      datetime: '{{((as_timestamp(state_attr(''script.blink_take_snapshot'', ''last_triggered''))
+        | timestamp_local ) ) }}'
+    target:
+      entity_id: input_datetime.last_blink_snapshot
   mode: queued
 bedtime_triggered_from_google_home:
   alias: GH - bedtime
   sequence:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 5
-        milliseconds: 0
-    - service: script.jarvis_script
-      data:
-        where: bedroomspeaker
-        type: speak
-        include: "<confirmation>  "
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 8
-        milliseconds: 0
-    - service: script.play_sleep_music
-      data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - service: script.jarvis_script
+    data:
+      where: bedroomspeaker
+      type: speak
+      include: '<confirmation>  '
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 8
+      milliseconds: 0
+  - service: script.play_sleep_music
+    data: {}
   mode: queued
 music_shuffle_all_artists_loop:
   alias: Music - Shuffle All Artists (inner loop to avoid stop on error)
   sequence:
-    - service: mass.queue_command
-      continue_on_error: true
-      data:
-        enqueue_mode: add
-        player_id: "{{ states('input_text.playartistloopentity') }}"
-        command: play_media
-        repeat_mode: all
-        uri: database://artist/{{ states('counter.playartistloopcounter') | int }}
+  - service: mass.queue_command
+    continue_on_error: true
+    data:
+      enqueue_mode: add
+      player_id: '{{ states(''input_text.playartistloopentity'') }}'
+      command: play_media
+      repeat_mode: all
+      uri: database://artist/{{ states('counter.playartistloopcounter') | int }}
   mode: queued
   max: 500
 music_shuffle_all_artists:
@@ -123,101 +122,115 @@ music_shuffle_all_artists:
       description: MA media player to que music on
       example: media_player.garage_speaker_ma
   sequence:
-    - service: input_text.set_value
-      data:
-        value: "{{media_player_entity}}"
-      target:
-        entity_id: input_text.playartistloopentity
-    - service: counter.reset
-      data: {}
-      target:
-        entity_id: counter.playartistloopcounter
-    - service: media_player.clear_playlist
-      data: {}
-      target:
-        entity_id: "{{media_player_entity}}"
-    - repeat:
-        count: "{{ states('input_number.playartistcount') | int }}"
-        sequence:
-          - if:
-              - condition: template
-                value_template: "{{range(1, 100) | random <=20}}"
-                alias:
-                  20% chance to include artist (adding every artist takes a few minutes
-                  so we will only add 20%)
-            then:
-              - service: script.turn_on
-                data: {}
-                target:
-                  entity_id: script.music_shuffle_all_artists_loop
-              - wait_for_trigger:
-                  - platform: state
-                    entity_id:
-                      - script.music_shuffle_all_artists_loop
-                    to: "off"
-                    for:
-                      hours: 0
-                      minutes: 0
-                      seconds: 0
-                timeout:
-                  hours: 0
-                  minutes: 0
-                  seconds: 15
-                  milliseconds: 0
-          - service: counter.increment
-            data: {}
-            target:
-              entity_id: counter.playartistloopcounter
-    - service: media_player.shuffle_set
-      data:
-        shuffle: true
-      target:
-        entity_id: "{{media_player_entity}}"
-    - service: media_player.media_play
-      data: {}
-      target:
-        entity_id: "{{media_player_entity}}"
+  - service: input_text.set_value
+    data:
+      value: '{{media_player_entity}}'
+    target:
+      entity_id: input_text.playartistloopentity
+  - service: counter.reset
+    data: {}
+    target:
+      entity_id: counter.playartistloopcounter
+  - service: media_player.clear_playlist
+    data: {}
+    target:
+      entity_id: '{{media_player_entity}}'
+  - repeat:
+      count: '{{ states(''input_number.playartistcount'') | int }}'
+      sequence:
+      - if:
+        - condition: template
+          value_template: '{{range(1, 100) | random <=20}}'
+          alias: 20% chance to include artist (adding every artist takes a few minutes
+            so we will only add 20%)
+        then:
+        - service: script.turn_on
+          data: {}
+          target:
+            entity_id: script.music_shuffle_all_artists_loop
+        - wait_for_trigger:
+          - platform: state
+            entity_id:
+            - script.music_shuffle_all_artists_loop
+            to: 'off'
+            for:
+              hours: 0
+              minutes: 0
+              seconds: 0
+          timeout:
+            hours: 0
+            minutes: 0
+            seconds: 15
+            milliseconds: 0
+      - service: counter.increment
+        data: {}
+        target:
+          entity_id: counter.playartistloopcounter
+  - service: media_player.shuffle_set
+    data:
+      shuffle: true
+    target:
+      entity_id: '{{media_player_entity}}'
+  - service: media_player.media_play
+    data: {}
+    target:
+      entity_id: '{{media_player_entity}}'
   mode: single
-
 alexa_pause_bedroom_tv:
   alias: Alexa - Pause Bedroom TV
   sequence:
-    - service: media_player.media_pause
-      data: {}
-      target:
-        entity_id: media_player.bedroom_tv
+  - service: media_player.media_pause
+    data: {}
+    target:
+      entity_id: media_player.bedroom_tv
   mode: single
 alexa_play_bedroom_tv:
   alias: Alexa - Play Bedroom TV
   sequence:
-    - service: media_player.media_play
-      data: {}
-      target:
-        entity_id: media_player.bedroom_tv
+  - service: media_player.media_play
+    data: {}
+    target:
+      entity_id: media_player.bedroom_tv
   mode: single
 alexa_stop_bedroom_tv:
   alias: Alexa - Stop Bedroom TV
   sequence:
-    - service: media_player.media_stop
-      data: {}
-      target:
-        entity_id: media_player.bedroom_tv
-    - service: media_player.turn_off
-      data: {}
-      target:
-        entity_id: media_player.bedroom_tv
+  - service: media_player.media_stop
+    data: {}
+    target:
+      entity_id: media_player.bedroom_tv
+  - service: media_player.turn_off
+    data: {}
+    target:
+      entity_id: media_player.bedroom_tv
   mode: single
 alexa_turn_off_bedroom_tv:
   alias: Alexa - Turn off Bedroom TV
   sequence:
-    - service: google_assistant_sdk.send_text_command
-      data:
-        command: turn off bedroom tv
+  - service: google_assistant_sdk.send_text_command
+    data:
+      command: turn off bedroom tv
   mode: single
 alexa_turn_on_bedroom_tv:
   alias: Alexa - Turn on Bedroom TV
   sequence:
-    - service: google_assistant_sdk.send_text_command
+  - service: google_assistant_sdk.send_text_command
+    data:
+      command: turn on bedroom tv
+  mode: single
+play_music_on_phone:
+  alias: Play Music on Phone
+  sequence:
+  - service: notify.mobile_app_motorola_one_5g_ace
+    data:
+      message: command_launch_app
       data:
-        command: turn on bedroom tv
+        package_name: com.ventismedia.android.mediamonkey
+    enabled: false
+  - service: notify.mobile_app_motorola_one_5g_ace
+    data:
+      message: command_media
+      data:
+        media_command: play_pause
+        media_package_name: com.ventismedia.android.mediamonkey
   mode: single
