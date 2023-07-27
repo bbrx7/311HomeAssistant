@@ -6,7 +6,7 @@
 ###############################################################################
 
 ###############################################################################
-# jarvis_script is the main script to call for all automations.
+# jarvis_script is the main script to call for all notifications.
 # it will build the message and then pass to appropriate script for that message type
 # it can also call AI conversation process to use an AI generated message
 #
