@@ -6,7 +6,7 @@
 ###############################################################################
 
 ###############################################################################
-# jarvis_script is the main script to call for all automations.
+# jarvis_script is the main script to call for all notifications.
 # it will build the message and then pass to appropriate script for that message type
 # it can also call AI conversation process to use an AI generated message
 #
@@ -86,7 +86,7 @@ group:
       - media_player.living_room_tv
       - media_player.xbox
 
-  # music assistant version of media player (if you use media assistant to play music)
+  # music assistant version of media player (if you use music assistant to play music)
   musicassistant_speakers:
     entities:
       - media_player.garage_speaker_ma
@@ -296,33 +296,6 @@ script:
           jarvismessage: >
             {%set outputmessage=include%} 
 
-            {# if we pulled an ai message, get the txt from the response#}
-            {%if welcomegeneratedmessage is defined%}
-              {%set aiwelcome=welcomegeneratedmessage.response.speech.plain.speech%}
-            {%else%}
-              {%set aiwelcome=''%}
-            {%endif%}
-            {%if batterygeneratedmessage is defined%}
-              {%set aibattery=batterygeneratedmessage.response.speech.plain.speech%}
-            {%else%}
-              {%set aibattery=''%}
-            {%endif%}
-            {%if bedtimegeneratedmessage is defined%}
-              {%set aibedtime=bedtimegeneratedmessage.response.speech.plain.speech%}
-            {%else%}
-              {%set aibedtime=''%}
-            {%endif%}
-            {%if gametimegeneratedmessage is defined%}
-              {%set aigametime=gametimegeneratedmessage.response.speech.plain.speech%}
-            {%else%}
-              {%set aigametime=''%}
-            {%endif%}
-            {%if customaigeneratedmessage is defined%}
-              {%set aicustom=customaigeneratedmessage.response.speech.plain.speech%}
-            {%else%}
-              {%set aicustom=''%}
-            {%endif%}
-
             {#add parts of the message defined in the 'include' variable#}
 
             {#if <greeting> included add to outputmessage#}
@@ -371,7 +344,8 @@ script:
 
             {#if <bedtime> included add to outputmessage#}
             {%if include is search('<bedtime>',ignorecase=True) %}
-              {%if aibedtime != ''%}
+              {%if bedtimegeneratedmessage is defined%}
+                {%set aibedtime = bedtimegeneratedmessage.response.speech.plain.speech%}
                 {%set outputmessage = (outputmessage|regex_replace(find='<bedtime>', replace=aibedtime , ignorecase=True))%}
               {%else%}
                 {%set bedtime=[
@@ -423,7 +397,8 @@ script:
 
             {#if <welcome> included add to outputmessage#}
             {%if include is search('<welcome>',ignorecase=True)%}
-              {%if aiwelcome != ''%}
+              {%if welcomegeneratedmessage is defined%}
+                {%set aiwelcome = welcomegeneratedmessage.response.speech.plain.speech%}
                 {%set outputmessage = (outputmessage|regex_replace(find='<welcome>',replace=aiwelcome, ignorecase=True))%}
               {%else%}
                 {%set welcome=[
@@ -440,7 +415,8 @@ script:
 
             {#if <gametime> included add to outputmessage#}
             {%if include is search('<gametime>', ignorecase=True) %}
-              {%if aigametime != ''%}
+              {%if gametimegeneratedmessage is defined%}
+                {%set aigametime = gametimegeneratedmessage.response.speech.plain.speech%}
                 {%set outputmessage = (outputmessage|regex_replace(find='<gametime>',replace=aigametime , ignorecase=True))%}
               {%else%}
                 {%set gametime=[
@@ -474,7 +450,8 @@ script:
 
             {#if <brianbatterylow> included add to outputmessage#}
             {%if include is search('<brianbatterylow>',ignorecase=True)%}
-              {%if aibattery != ''%}
+              {%if batterygeneratedmessage is defined%}
+                {%set aibattery = batterygeneratedmessage.response.speech.plain.speech%}
                 {%set outputmessage = (outputmessage|regex_replace(find='<brianbatterylow>', replace=aibattery, ignorecase=True)) %}
               {%else%}
                 {%if states.sensor.motorola_one_5g_ace_battery_level.state|int>30%}
@@ -493,7 +470,8 @@ script:
             {%endif%}
 
             {#if <customai> included add generated ai output to outputmessage#}
-            {%if include is search('<customai>',ignorecase=True)%}
+            {%if include is search('<customai>',ignorecase=True) and customaigeneratedmessage is defined%}
+              {%set aicustom = customaigeneratedmessage.response.speech.plain.speech%}
               {%set outputmessage = (outputmessage|regex_replace(find='<customai>',replace=aicustom, ignorecase=True))%}
             {%endif%}
 
