@@ -16,3 +16,7 @@ entities:
     hidden: false
   script.alexa_turn_off_bedroom_tv:
     hidden: false
+  switch.wax_warmer_1:
+    hidden: false
+  switch.wax_warmer_2:
+    hidden: false
