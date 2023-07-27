@@ -710,7 +710,7 @@ script:
                         message: "{{message}}"
                         cache: true
                       target:
-                        entity_id: tts.google_en_ie
+                        entity_id: "{{states('input_select.speech_engine_for_tts')}}"
                 - conditions:
                     - condition: template
                       alias: Media Player - Audio

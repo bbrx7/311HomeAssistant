@@ -1,747 +1,945 @@
-- id: '1686715353422'
+- id: "1686715353422"
   alias: Sleep Music
-  description: ''
+  description: ""
   trigger:
-  - platform: time
-    at: input_datetime.bed_time
-    id: bedtime
-  - platform: event
-    event_type: timer.finished
-    event_data:
-      entity_id: timer.sleep_music_turn_off_timer
-    id: Timer Finished
+    - platform: time
+      at: input_datetime.bed_time
+      id: bedtime
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.sleep_music_turn_off_timer
+      id: Timer Finished
   condition: []
   action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: bedtime
-      sequence:
-      - service: script.play_sleep_music
-        data: {}
-    - conditions:
-      - condition: trigger
-        id: Timer Finished
-      - condition: template
-        value_template: '{{state_attr(''media_player.bedroom_tv'',''media_title'')
-          is search(''sleep'', ignorecase=True)}}'
-        alias: Video Playing has Sleep in title
-      sequence:
-      - service: media_player.turn_off
-        data: {}
-        target:
-          entity_id: media_player.bedroom_tv
-      - service: google_assistant_sdk.send_text_command
-        data:
-          command: turn off bedroom tv
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: bedtime
+          sequence:
+            - service: script.play_sleep_music
+              data: {}
+        - conditions:
+            - condition: trigger
+              id: Timer Finished
+            - condition: template
+              value_template:
+                "{{state_attr('media_player.bedroom_tv','media_title')
+                is search('sleep', ignorecase=True)}}"
+              alias: Video Playing has Sleep in title
+          sequence:
+            - service: media_player.turn_off
+              data: {}
+              target:
+                entity_id: media_player.bedroom_tv
+            - service: google_assistant_sdk.send_text_command
+              data:
+                command: turn off bedroom tv
   mode: queued
   max: 10
-- id: '1687315589089'
+- id: "1687315589089"
   alias: Set Date Toggles
-  description: ''
+  description: ""
   trigger:
-  - platform: time
-    at: 00:00:01
-    id: onceaday
-  - platform: state
-    entity_id:
-    - binary_sensor.tomorrow_is_a_school_day
-    id: SchoolDayTomorrow
-  - platform: state
-    entity_id:
-    - calendar.school
-    id: SchoolCalendar
-  - platform: state
-    entity_id:
-    - calendar.holidays_in_united_states
-    id: HolidayCalendar
-  - platform: state
-    entity_id:
-    - calendar.natdaycal
-    id: HolidayCalendar
-  condition: []
-  action:
-  - choose:
-    - conditions:
-      - condition: or
-        conditions:
-        - condition: trigger
-          id: onceaday
-        - condition: trigger
-          id: SchoolDayTomorrow
-      sequence:
-      - service: input_datetime.set_datetime
-        data:
-          time: "{% if is_state('binary_sensor.tomorrow_is_a_school_day', 'on') %}\n
-            \ {{states('input_datetime.bed_time_school')}}\n{% else %}\n  {{states('input_datetime.bed_time_no_school')}}\n{%
-            endif %}"
-        target:
-          entity_id: input_datetime.bed_time
-    - conditions:
-      - condition: trigger
-        id: SchoolCalendar
-      sequence:
-      - if:
-        - condition: template
-          value_template: "        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'),
-            '%Y-%m-%d %H:%M:%S').date() %}\n        {%- set tomorrow=now().date()+timedelta(days=13)
-            \ %}\n        {%- set event=states.calendar.school.attributes.message
-            %}\n        {% if event == 'Summer Vacation Starts'  and tomorrow == next_event_start
-            %}\n          true\n        {% else %}\n          false\n        {% endif
-            %}              "
-        then:
-        - service: input_boolean.turn_on
-          data: {}
-          target:
-            entity_id: input_boolean.summer_break_boolean
-      - if:
-        - condition: template
-          value_template: "        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'),
-            '%Y-%m-%d %H:%M:%S').date() %}\n        {%- set tomorrow=now().date()+timedelta(days=13)
-            \ %}\n        {%- set event=states.calendar.school.attributes.message
-            %}\n        {% if event == 'First Day of School - Half Day'  and tomorrow
-            == next_event_start %}\n          true\n        {% else %}\n          false\n
-            \       {% endif %}"
-        then:
-        - service: input_boolean.turn_off
-          data: {}
-          target:
-            entity_id: input_boolean.summer_break_boolean
-    - conditions:
-      - condition: trigger
-        id: HolidayCalendar
-      sequence:
-      - service: input_text.set_value
-        data:
-          value: "{%- set event=states.calendar.holidays_in_united_states.attributes.message
-            %}  {% if is_state('calendar.holidays_in_united_states', 'on') %}\n    Today
-            is {{event}}\n  {% else %}\n    {%- set event=states.calendar.natdaycal.attributes.message
-            %}\n    {% if is_state('calendar.natdaycal', 'on') %}\n      Today is
-            {{event}}\n    {% else %}\n      No Holiday Today\n    {% endif %}  \n
-            \ {% endif %}    "
-        target:
-          entity_id: input_text.today_holiday
-  mode: queued
-  max: 10
-- id: '1687366411436'
-  alias: Garage Lights
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - switch.garage_lights_switch_1
-    to: 'on'
-    id: Lights On
-    from: 'off'
-  - platform: state
-    entity_id:
-    - switch.garage_lights_switch_1
-    to: 'off'
-    id: Lights Off
-  - platform: state
-    entity_id:
-    - input_boolean.mechanic_mode_boolean
-    to: 'on'
-    id: Mechanic On
-  - platform: state
-    entity_id:
-    - input_boolean.mechanic_mode_boolean
-    to: 'off'
-    id: Mechanic Off
-  - platform: event
-    event_type: timer.finished
-    event_data:
-      entity_id: timer.garage_lights_turn_off_timer
-    id: Timer Finished
-  - platform: template
-    value_template: '{% set f = state_attr(''timer.garage_lights_turn_off_timer'',
-      ''finishes_at'') %}
-
-      {{ f != none and (as_timestamp(f) - now().timestamp()) | int <= 135}} '
-    id: finishes soon
-  condition: []
-  action:
-  - choose:
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id: Lights On
-        - condition: state
-          entity_id: switch.garage_lights_switch_1
-          state: 'on'
-        - condition: state
-          entity_id: input_boolean.mechanic_mode_boolean
-          state: 'off'
-      sequence:
-      - service: timer.start
-        data: {}
-        target:
-          entity_id: timer.garage_lights_turn_off_timer
-    - conditions:
-      - condition: state
-        entity_id: switch.garage_lights_switch_1
-        state: 'off'
-      - condition: trigger
-        id: Lights Off
-      sequence:
-      - service: timer.cancel
-        data: {}
-        target:
-          entity_id: timer.garage_lights_turn_off_timer
-    - conditions:
-      - condition: trigger
-        id: Mechanic On
-      sequence:
-      - service: timer.cancel
-        data: {}
-        target:
-          entity_id: timer.garage_lights_turn_off_timer
-      - service: switch.turn_on
-        data: {}
-        target:
-          entity_id: switch.garage_lights_switch_1
-      - service: script.jarvis_script
-        data:
-          data:
-            who: brian sully all
-            where: garagespeaker
-            type: speak
-            message: Mechanic Mode is now turned on, the light won''t turn off
-            include: '<confirmation> <message> '
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id: Mechanic Off
-        - condition: state
-          entity_id: switch.garage_lights_switch_1
-          state: 'on'
-      sequence:
-      - service: timer.start
-        data: {}
-        target:
-          entity_id: timer.garage_lights_turn_off_timer
-    - conditions:
-      - condition: trigger
-        id: Timer Finished
-      - condition: state
-        entity_id: input_boolean.mechanic_mode_boolean
-        state: 'off'
-      sequence:
-      - type: turn_off
-        device_id: a326e6bb7a61a8e36f7d7396b685f15c
-        entity_id: switch.garage_lights_switch_1
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id: finishes soon
-      - condition: state
-        entity_id: switch.garage_lights_switch_1
-        state: 'on'
-      sequence:
-      - service: script.jarvis_script
-        data:
-          who: brian
-          where: garagespeaker
-          type: speak
-          message: The garage lights will turn off soon. If you would like them to
-            stay on, please activate mechanic mode.
-          include: <interuption> <message>
-      - service: script.jarvis_script
-        data:
-          who: Brian
-          type: txt
-          actionable_event: mobile_notification_garagelights
-          message: The garage lights are scheduled turn off soon. Would you like to
-            Activate Mechanic Mode to keep them on?
-          include: <message>
-  mode: queued
-  max: 10
-- id: '1687368316052'
-  alias: Take Blink Snapshot every 30 minutes
-  description: ''
-  trigger:
-  - platform: time_pattern
-    minutes: /30
-  condition: []
-  action:
-  - service: script.blink_take_snapshot
-    data: {}
-  mode: single
-- id: '1687802277039'
-  alias: Water Leak
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - binary_sensor.basement_bedroom_water_sensor_water_leak
-    to: 'on'
-  - platform: state
-    entity_id:
-    - binary_sensor.basement_kitchen_water_sensor_water_leak
-    to: 'on'
-  condition: []
-  action:
-  - service: script.jarvis_script
-    data:
-      who: brian
-      where: bedroomspeaker garagespeaker
-      type: speak
-      message: There is a water leak in the basement!
-      include: <announcement> <message>
-  mode: parallel
-  max: 10
-- id: '1688061104184'
-  alias: BrianPhoneBattery
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id: sensor.motorola_one_5g_ace_battery_level
-    below: 31
-    id: Battery Low
-  - platform: numeric_state
-    entity_id: sensor.motorola_one_5g_ace_battery_level
-    below: 21
-    id: Battery Low
-  - platform: numeric_state
-    entity_id: sensor.motorola_one_5g_ace_battery_level
-    below: 11
-    id: Battery Low
-  - platform: numeric_state
-    entity_id: sensor.motorola_one_5g_ace_battery_level
-    below: 6
-    id: Battery Low
-  condition: []
-  action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: Battery Low
-      - condition: not
-        conditions:
-        - condition: state
-          entity_id: sensor.motorola_one_5g_ace_battery_state
-          state: not_charging
-      sequence:
-      - service: script.jarvis_script
-        data:
-          who: brian
-          type: speak
-          include: <interuption> <brianbatterylow>
-  mode: single
-- id: '1688065188974'
-  alias: BrianIsHome
-  description: ''
-  trigger:
-  - platform: zone
-    entity_id: person.brian
-    zone: zone.home
-    event: enter
-  condition: []
-  action:
-  - wait_for_trigger:
+    - platform: time
+      at: 00:00:01
+      id: onceaday
     - platform: state
       entity_id:
-      - sensor.brian_room
-      to: Bedroom
-    timeout:
-      hours: 0
-      minutes: 30
-      seconds: 0
-      milliseconds: 0
-    continue_on_timeout: false
-  - service: script.jarvis_script
-    data:
-      who: brian
-      type: speak
-      include: <greeting> <welcome>
-  mode: single
-- id: '1688139355960'
-  alias: xbox
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - media_player.xbox
-    to: idle
+        - binary_sensor.tomorrow_is_a_school_day
+      id: SchoolDayTomorrow
+    - platform: state
+      entity_id:
+        - calendar.school
+      id: SchoolCalendar
+    - platform: state
+      entity_id:
+        - calendar.holidays_in_united_states
+      id: HolidayCalendar
+    - platform: state
+      entity_id:
+        - calendar.natdaycal
+      id: HolidayCalendar
   condition: []
   action:
-  - service: script.jarvis_script
-    data:
-      where: sully_s_room
-      type: speak
-      include: <gametime>
+    - choose:
+        - conditions:
+            - condition: or
+              conditions:
+                - condition: trigger
+                  id: onceaday
+                - condition: trigger
+                  id: SchoolDayTomorrow
+          sequence:
+            - service: input_datetime.set_datetime
+              data:
+                time:
+                  "{% if is_state('binary_sensor.tomorrow_is_a_school_day', 'on') %}\n
+                  \ {{states('input_datetime.bed_time_school')}}\n{% else %}\n  {{states('input_datetime.bed_time_no_school')}}\n{%
+                  endif %}"
+              target:
+                entity_id: input_datetime.bed_time
+        - conditions:
+            - condition: trigger
+              id: SchoolCalendar
+          sequence:
+            - if:
+                - condition: template
+                  value_template:
+                    "        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'),
+                    '%Y-%m-%d %H:%M:%S').date() %}\n        {%- set tomorrow=now().date()+timedelta(days=13)
+                    \ %}\n        {%- set event=states.calendar.school.attributes.message
+                    %}\n        {% if event == 'Summer Vacation Starts'  and tomorrow == next_event_start
+                    %}\n          true\n        {% else %}\n          false\n        {% endif
+                    %}              "
+              then:
+                - service: input_boolean.turn_on
+                  data: {}
+                  target:
+                    entity_id: input_boolean.summer_break_boolean
+            - if:
+                - condition: template
+                  value_template:
+                    "        {%- set next_event_start=strptime(state_attr('calendar.school','start_time'),
+                    '%Y-%m-%d %H:%M:%S').date() %}\n        {%- set tomorrow=now().date()+timedelta(days=13)
+                    \ %}\n        {%- set event=states.calendar.school.attributes.message
+                    %}\n        {% if event == 'First Day of School - Half Day'  and tomorrow
+                    == next_event_start %}\n          true\n        {% else %}\n          false\n
+                    \       {% endif %}"
+              then:
+                - service: input_boolean.turn_off
+                  data: {}
+                  target:
+                    entity_id: input_boolean.summer_break_boolean
+        - conditions:
+            - condition: trigger
+              id: HolidayCalendar
+          sequence:
+            - service: input_text.set_value
+              data:
+                value:
+                  "{%- set event=states.calendar.holidays_in_united_states.attributes.message
+                  %}  {% if is_state('calendar.holidays_in_united_states', 'on') %}\n    Today
+                  is {{event}}\n  {% else %}\n    {%- set event=states.calendar.natdaycal.attributes.message
+                  %}\n    {% if is_state('calendar.natdaycal', 'on') %}\n      Today is
+                  {{event}}\n    {% else %}\n      No Holiday Today\n    {% endif %}  \n
+                  \ {% endif %}    "
+              target:
+                entity_id: input_text.today_holiday
   mode: queued
   max: 10
-- id: '1688140981780'
-  alias: PhoneRinging
-  description: ''
+- id: "1687366411436"
+  alias: Garage Lights
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - sensor.motorola_one_5g_ace_phone_state
-    to: offhook
-    id: answered
-  - platform: state
-    entity_id:
-    - sensor.motorola_one_5g_ace_phone_state
-    to: ringing
-    id: ringing
+    - platform: state
+      entity_id:
+        - switch.garage_lights_switch_1
+      to: "on"
+      id: Lights On
+      from: "off"
+    - platform: state
+      entity_id:
+        - switch.garage_lights_switch_1
+      to: "off"
+      id: Lights Off
+    - platform: state
+      entity_id:
+        - input_boolean.mechanic_mode_boolean
+      to: "on"
+      id: Mechanic On
+    - platform: state
+      entity_id:
+        - input_boolean.mechanic_mode_boolean
+      to: "off"
+      id: Mechanic Off
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.garage_lights_turn_off_timer
+      id: Timer Finished
+    - platform: template
+      value_template:
+        "{% set f = state_attr('timer.garage_lights_turn_off_timer',
+        'finishes_at') %}
+
+        {{ f != none and (as_timestamp(f) - now().timestamp()) | int <= 135}} "
+      id: finishes soon
   condition: []
   action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: ringing
-      - condition: template
-        value_template: '{{ states(media_entity) | lower==''playing'' }}'
-        alias: media playing
-      sequence:
-      - service: media_player.volume_set
-        data:
-          volume_level: '{{ temp_volume }}'
-        target:
-          entity_id: '{{media_entity}}'
-      - wait_for_trigger:
+    - choose:
+        - conditions:
+            - condition: and
+              conditions:
+                - condition: trigger
+                  id: Lights On
+                - condition: state
+                  entity_id: switch.garage_lights_switch_1
+                  state: "on"
+                - condition: state
+                  entity_id: input_boolean.mechanic_mode_boolean
+                  state: "off"
+          sequence:
+            - service: timer.start
+              data: {}
+              target:
+                entity_id: timer.garage_lights_turn_off_timer
+        - conditions:
+            - condition: state
+              entity_id: switch.garage_lights_switch_1
+              state: "off"
+            - condition: trigger
+              id: Lights Off
+          sequence:
+            - service: timer.cancel
+              data: {}
+              target:
+                entity_id: timer.garage_lights_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id: Mechanic On
+          sequence:
+            - service: timer.cancel
+              data: {}
+              target:
+                entity_id: timer.garage_lights_turn_off_timer
+            - service: switch.turn_on
+              data: {}
+              target:
+                entity_id: switch.garage_lights_switch_1
+            - service: script.jarvis_script
+              data:
+                data:
+                  who: brian sully all
+                  where: garagespeaker
+                  type: speak
+                  message: Mechanic Mode is now turned on, the light won''t turn off
+                  include: "<confirmation> <message> "
+        - conditions:
+            - condition: and
+              conditions:
+                - condition: trigger
+                  id: Mechanic Off
+                - condition: state
+                  entity_id: switch.garage_lights_switch_1
+                  state: "on"
+          sequence:
+            - service: timer.start
+              data: {}
+              target:
+                entity_id: timer.garage_lights_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id: Timer Finished
+            - condition: state
+              entity_id: input_boolean.mechanic_mode_boolean
+              state: "off"
+          sequence:
+            - type: turn_off
+              device_id: a326e6bb7a61a8e36f7d7396b685f15c
+              entity_id: switch.garage_lights_switch_1
+              domain: switch
+        - conditions:
+            - condition: trigger
+              id: finishes soon
+            - condition: state
+              entity_id: switch.garage_lights_switch_1
+              state: "on"
+          sequence:
+            - service: script.jarvis_script
+              data:
+                who: brian
+                where: garagespeaker
+                type: speak
+                message:
+                  The garage lights will turn off soon. If you would like them to
+                  stay on, please activate mechanic mode.
+                include: <interuption> <message>
+            - service: script.jarvis_script
+              data:
+                who: Brian
+                type: txt
+                actionable_event: mobile_notification_garagelights
+                message:
+                  The garage lights are scheduled turn off soon. Would you like to
+                  Activate Mechanic Mode to keep them on?
+                include: <message>
+  mode: queued
+  max: 10
+- id: "1687368316052"
+  alias: Take Blink Snapshot every 30 minutes
+  description: ""
+  trigger:
+    - platform: time_pattern
+      minutes: /30
+  condition: []
+  action:
+    - service: script.blink_take_snapshot
+      data: {}
+  mode: single
+- id: "1687802277039"
+  alias: Water Leak
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.basement_bedroom_water_sensor_water_leak
+      to: "on"
+    - platform: state
+      entity_id:
+        - binary_sensor.basement_kitchen_water_sensor_water_leak
+      to: "on"
+  condition: []
+  action:
+    - service: script.jarvis_script
+      data:
+        who: brian
+        where: bedroomspeaker garagespeaker
+        type: speak
+        message: There is a water leak in the basement!
+        include: <announcement> <message>
+  mode: parallel
+  max: 10
+- id: "1688061104184"
+  alias: BrianPhoneBattery
+  description: ""
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.motorola_one_5g_ace_battery_level
+      below: 31
+      id: Battery Low
+    - platform: numeric_state
+      entity_id: sensor.motorola_one_5g_ace_battery_level
+      below: 21
+      id: Battery Low
+    - platform: numeric_state
+      entity_id: sensor.motorola_one_5g_ace_battery_level
+      below: 11
+      id: Battery Low
+    - platform: numeric_state
+      entity_id: sensor.motorola_one_5g_ace_battery_level
+      below: 6
+      id: Battery Low
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: Battery Low
+            - condition: not
+              conditions:
+                - condition: state
+                  entity_id: sensor.motorola_one_5g_ace_battery_state
+                  state: not_charging
+          sequence:
+            - service: script.jarvis_script
+              data:
+                who: brian
+                type: speak
+                include: <interuption> <brianbatterylow>
+  mode: single
+- id: "1688065188974"
+  alias: BrianIsHome
+  description: ""
+  trigger:
+    - platform: zone
+      entity_id: person.brian
+      zone: zone.home
+      event: enter
+  condition: []
+  action:
+    - wait_for_trigger:
         - platform: state
           entity_id:
-          - sensor.motorola_one_5g_ace_phone_state
-          to: idle
-          for:
-            hours: 0
-            minutes: 0
-            seconds: 0
-        timeout:
-          hours: 0
-          minutes: 3
-          seconds: 0
-          milliseconds: 0
-      - service: media_player.volume_set
-        data:
-          volume_level: '{{ mediaplayer_volume_level }}'
-        target:
-          entity_id: '{{media_entity}}'
-    - conditions:
-      - condition: trigger
-        id: answered
-      - condition: template
-        value_template: '{{ states(media_entity) | lower==''playing'' }}'
-        alias: media playing
-      sequence:
-      - service: media_player.media_pause
-        data: {}
-        target:
-          entity_id: '{{media_entity}}'
-      - wait_for_trigger:
-        - platform: state
-          entity_id:
-          - sensor.motorola_one_5g_ace_phone_state
-          to: idle
-          for:
-            hours: 0
-            minutes: 0
-            seconds: 0
-        timeout:
-          hours: 0
-          minutes: 20
-          seconds: 0
-          milliseconds: 0
-      - service: media_player.media_play
-        data: {}
-        target:
-          entity_id: '{{media_entity}}'
+            - sensor.brian_room
+          to: Bedroom
+      timeout:
+        hours: 0
+        minutes: 30
+        seconds: 0
+        milliseconds: 0
+      continue_on_timeout: false
+    - service: script.jarvis_script
+      data:
+        who: brian
+        type: speak
+        include: <greeting> <welcome>
+  mode: single
+- id: "1688139355960"
+  alias: xbox
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - media_player.xbox
+      to: idle
+  condition: []
+  action:
+    - service: script.jarvis_script
+      data:
+        where: sully_s_room
+        type: speak
+        include: <gametime>
+  mode: queued
+  max: 10
+- id: "1688140981780"
+  alias: PhoneRinging
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - sensor.motorola_one_5g_ace_phone_state
+      to: offhook
+      id: answered
+    - platform: state
+      entity_id:
+        - sensor.motorola_one_5g_ace_phone_state
+      to: ringing
+      id: ringing
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: ringing
+            - condition: template
+              value_template: "{{ states(media_entity) | lower=='playing' }}"
+              alias: media playing
+          sequence:
+            - service: media_player.volume_set
+              data:
+                volume_level: "{{ temp_volume }}"
+              target:
+                entity_id: "{{media_entity}}"
+            - wait_for_trigger:
+                - platform: state
+                  entity_id:
+                    - sensor.motorola_one_5g_ace_phone_state
+                  to: idle
+                  for:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+              timeout:
+                hours: 0
+                minutes: 3
+                seconds: 0
+                milliseconds: 0
+            - service: media_player.volume_set
+              data:
+                volume_level: "{{ mediaplayer_volume_level }}"
+              target:
+                entity_id: "{{media_entity}}"
+        - conditions:
+            - condition: trigger
+              id: answered
+            - condition: template
+              value_template: "{{ states(media_entity) | lower=='playing' }}"
+              alias: media playing
+          sequence:
+            - service: media_player.media_pause
+              data: {}
+              target:
+                entity_id: "{{media_entity}}"
+            - wait_for_trigger:
+                - platform: state
+                  entity_id:
+                    - sensor.motorola_one_5g_ace_phone_state
+                  to: idle
+                  for:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+              timeout:
+                hours: 0
+                minutes: 20
+                seconds: 0
+                milliseconds: 0
+            - service: media_player.media_play
+              data: {}
+              target:
+                entity_id: "{{media_entity}}"
   variables:
     media_entity: media_player.bedroom_tv
     temp_volume: 0.25
-    mediaplayer_State: '{{ states(media_entity) }}'
-    mediaplayer_volume_level: '{{ state_attr(media_entity,''volume_level'') }}'
+    mediaplayer_State: "{{ states(media_entity) }}"
+    mediaplayer_volume_level: "{{ state_attr(media_entity,'volume_level') }}"
   mode: parallel
   max: 10
-- id: '1688571288639'
+- id: "1688571288639"
   alias: Take Blink Snapshot on motion detected
-  description: ''
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - sensor.motorola_one_5g_ace_last_notification
+    - platform: state
+      entity_id:
+        - sensor.motorola_one_5g_ace_last_notification
   condition:
-  - condition: template
-    value_template: '{{states.sensor.motorola_one_5g_ace_last_notification  is search("Motion
-      detected at your camera", ignorecase=True) }}'
+    - condition: template
+      value_template:
+        '{{states.sensor.motorola_one_5g_ace_last_notification  is search("Motion
+        detected at your camera", ignorecase=True) }}'
   action:
-  - service: script.blink_take_snapshot
-    data: {}
+    - service: script.blink_take_snapshot
+      data: {}
   mode: single
-- id: '1689099244514'
+- id: "1689099244514"
   alias: Actionable Notification Responses
-  description: ''
+  description: ""
   trigger:
-  - platform: event
-    event_type: alexa_actionable_notification
-    event_data:
-      event_id: alexa_notification_bedroom_tvlights
-      event_response: ResponseYes
-      event_response_type: ResponseYes
-    id: Turn off Bedroom Lights - YES
-    alias: Turn off Bedroom Lights - YES
-  - platform: event
-    event_type: alexa_actionable_notification
-    event_data:
-      event_id: alexa_notification_bedroom_tvlights
-      event_response: ResponseNo
-      event_response_type: ResponseNo
-    id: Turn off Bedroom Lights - NO
-    alias: Turn off Bedroom Lights - NO
-  - platform: event
-    event_type: alexa_actionable_notification
-    event_data:
-      event_id: alexa_notification_bedroom_tvlights
-      event_response: Mood Lighting
-      event_response_type: ResponseSelect
-    id: Turn off Bedroom Lights - Mood Lighting
-    alias: Turn off Bedroom Lights - Mood Lighting
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: mobile_notification_garagelights_YES
-    id: Activate Mechanic Mode - YES
-    alias: Activate Mechanic Mode - YES
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: mobile_notification_garagelights_NO
-    id: Activate Mechanic Mode - NO
-    alias: Activate Mechanic Mode - NO
+    - platform: event
+      event_type: alexa_actionable_notification
+      event_data:
+        event_id: alexa_notification_bedroom_tvlights
+        event_response: ResponseYes
+        event_response_type: ResponseYes
+      id: Turn off Bedroom Lights - YES
+      alias: Turn off Bedroom Lights - YES
+    - platform: event
+      event_type: alexa_actionable_notification
+      event_data:
+        event_id: alexa_notification_bedroom_tvlights
+        event_response: ResponseNo
+        event_response_type: ResponseNo
+      id: Turn off Bedroom Lights - NO
+      alias: Turn off Bedroom Lights - NO
+    - platform: event
+      event_type: alexa_actionable_notification
+      event_data:
+        event_id: alexa_notification_bedroom_tvlights
+        event_response: Mood Lighting
+        event_response_type: ResponseSelect
+      id: Turn off Bedroom Lights - Mood Lighting
+      alias: Turn off Bedroom Lights - Mood Lighting
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: mobile_notification_garagelights_YES
+      id: Activate Mechanic Mode - YES
+      alias: Activate Mechanic Mode - YES
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: mobile_notification_garagelights_NO
+      id: Activate Mechanic Mode - NO
+      alias: Activate Mechanic Mode - NO
   condition: []
   action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Turn off Bedroom Lights - YES
-      sequence:
-      - service: script.jarvis_script
-        data:
-          where: '{{ trigger.event.data.mediaplayer_entity }}'
-          type: speak
-          include: <confirmation>
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 6
-          milliseconds: 0
-      - type: turn_off
-        device_id: 83fb8e68db50634011416b31bf0a52bb
-        entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
-        domain: switch
-      - service: light.turn_off
-        data: {}
-        target:
-          entity_id: light.smart_bulb
-    - conditions:
-      - condition: trigger
-        id:
-        - Turn off Bedroom Lights - NO
-      sequence:
-      - service: script.jarvis_script
-        data:
-          where: '{{ trigger.event.data.mediaplayer_entity }}'
-          type: speak
-          include: <confirmation>
-    - conditions:
-      - condition: trigger
-        id:
-        - Turn off Bedroom Lights - Mood Lighting
-      sequence:
-      - service: script.jarvis_script
-        data:
-          where: '{{ trigger.event.data.mediaplayer_entity }}'
-          type: speak
-          include: <confirmation>
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 6
-          milliseconds: 0
-      - type: turn_off
-        device_id: 83fb8e68db50634011416b31bf0a52bb
-        entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
-        domain: switch
-      - service: light.turn_on
-        data:
-          color_name: blue
-          brightness_pct: 40
-        target:
-          entity_id: light.smart_bulb
-        alias: Turn smart bulb on (Blue 40%)
-    - conditions:
-      - condition: trigger
-        id:
-        - Activate Mechanic Mode - YES
-      sequence:
-      - service: input_boolean.turn_on
-        data: {}
-        target:
-          entity_id: input_boolean.mechanic_mode_boolean
-    - conditions:
-      - condition: trigger
-        id:
-        - Activate Mechanic Mode - NO
-      sequence:
-      - service: switch.turn_off
-        data: {}
-        target:
-          entity_id: switch.garage_lights_switch_1
-      - service: input_boolean.turn_off
-        data: {}
-        target:
-          entity_id: input_boolean.mechanic_mode_boolean
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Turn off Bedroom Lights - YES
+          sequence:
+            - service: script.jarvis_script
+              data:
+                where: "{{ trigger.event.data.mediaplayer_entity }}"
+                type: speak
+                include: <confirmation>
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 6
+                milliseconds: 0
+            - type: turn_off
+              device_id: 83fb8e68db50634011416b31bf0a52bb
+              entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
+              domain: switch
+            - service: light.turn_off
+              data: {}
+              target:
+                entity_id: light.smart_bulb
+        - conditions:
+            - condition: trigger
+              id:
+                - Turn off Bedroom Lights - NO
+          sequence:
+            - service: script.jarvis_script
+              data:
+                where: "{{ trigger.event.data.mediaplayer_entity }}"
+                type: speak
+                include: <confirmation>
+        - conditions:
+            - condition: trigger
+              id:
+                - Turn off Bedroom Lights - Mood Lighting
+          sequence:
+            - service: script.jarvis_script
+              data:
+                where: "{{ trigger.event.data.mediaplayer_entity }}"
+                type: speak
+                include: <confirmation>
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 6
+                milliseconds: 0
+            - type: turn_off
+              device_id: 83fb8e68db50634011416b31bf0a52bb
+              entity_id: f9eaf56b1aa0818a7ad2e4c36996ca3e
+              domain: switch
+            - service: light.turn_on
+              data:
+                color_name: blue
+                brightness_pct: 40
+              target:
+                entity_id: light.smart_bulb
+              alias: Turn smart bulb on (Blue 40%)
+        - conditions:
+            - condition: trigger
+              id:
+                - Activate Mechanic Mode - YES
+          sequence:
+            - service: input_boolean.turn_on
+              data: {}
+              target:
+                entity_id: input_boolean.mechanic_mode_boolean
+        - conditions:
+            - condition: trigger
+              id:
+                - Activate Mechanic Mode - NO
+          sequence:
+            - service: switch.turn_off
+              data: {}
+              target:
+                entity_id: switch.garage_lights_switch_1
+            - service: input_boolean.turn_off
+              data: {}
+              target:
+                entity_id: input_boolean.mechanic_mode_boolean
   mode: single
-- id: '1689100162999'
+- id: "1689100162999"
   alias: Actionable Notification Triggers
-  description: ''
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - sensor.bedroom_tv_isplaying
-    to: 'on'
-    id: TV Playing
+    - platform: state
+      entity_id:
+        - sensor.bedroom_tv_isplaying
+      to: "on"
+      id: TV Playing
   condition: []
   action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - TV Playing
-      - condition: or
-        conditions:
-        - condition: state
-          entity_id: switch.master_bedroom_light_switch_light
-          state: 'on'
-        - condition: and
-          conditions:
-          - condition: state
-            entity_id: light.smart_bulb
-            state: 'on'
-          - condition: template
-            value_template: '{{state_attr(''light.smart_bulb'',''brightness'')>102
-              or state_attr(''light.smart_bulb'',''rgb_color'') !=(0, 0, 255)}}
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - TV Playing
+            - condition: or
+              conditions:
+                - condition: state
+                  entity_id: switch.master_bedroom_light_switch_light
+                  state: "on"
+                - condition: and
+                  conditions:
+                    - condition: state
+                      entity_id: light.smart_bulb
+                      state: "on"
+                    - condition: template
+                      value_template:
+                        "{{state_attr('light.smart_bulb','brightness')>102
+                        or state_attr('light.smart_bulb','rgb_color') !=(0, 0, 255)}}
 
-              '
-            alias: If we are blue 40% then we already set mood lighting so don't ask
-              again
-        alias: Any Bedroom light on
-      sequence:
-      - service: script.jarvis_script
-        data:
-          where: Bedroom
-          type: speak
-          actionable_event: alexa_notification_bedroom_tvlights
-          message: I noticed you are watching tv, would you like for me to turn off
-            the lights?
-          include: <interuption> <message>
-        alias: Ask to turn the lights off
+                        "
+                      alias:
+                        If we are blue 40% then we already set mood lighting so don't ask
+                        again
+              alias: Any Bedroom light on
+          sequence:
+            - service: script.jarvis_script
+              data:
+                where: Bedroom
+                type: speak
+                actionable_event: alexa_notification_bedroom_tvlights
+                message:
+                  I noticed you are watching tv, would you like for me to turn off
+                  the lights?
+                include: <interuption> <message>
+              alias: Ask to turn the lights off
   mode: single
-- id: '1690210830491'
+- id: "1690210830491"
   alias: Fan
-  description: ''
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - switch.master_bedroom_light_switch_fan
-    to: 'off'
-    id: Master Bedroom Fan Turned Off
-  - platform: state
-    entity_id:
-    - sensor.outside_temperature
-    id: Outside Temp Changed
-  - platform: event
-    event_type: timer.finished
-    event_data:
-      entity_id: timer.fan_turn_back_on_timer
-    id: Fan Timer Finished
-  - platform: state
-    entity_id:
-    - sensor.occupant_count_family
-    id: Occupant Count Changed
+    - platform: state
+      entity_id:
+        - switch.master_bedroom_light_switch_fan
+      to: "off"
+      id: Master Bedroom Fan Turned Off
+    - platform: state
+      entity_id:
+        - sensor.outside_temperature
+      id: Outside Temp Changed
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.fan_turn_back_on_timer
+      id: Fan Timer Finished
+    - platform: state
+      entity_id:
+        - sensor.occupant_count_family
+      id: Occupant Count Changed
   condition: []
   action:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Master Bedroom Fan Turned Off
-      sequence:
-      - service: timer.start
-        data: {}
-        target:
-          entity_id: timer.fan_turn_back_on_timer
-    - conditions:
-      - condition: state
-        entity_id: switch.master_bedroom_light_switch_fan
-        state: 'off'
-      - condition: numeric_state
-        entity_id: sensor.occupant_count_family
-        above: 0
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.outside_temperature
-          above: input_number.fan_on_outside_temp_limit_home
-        alias: Test temperature conditions
-      - condition: template
-        value_template: '{% set f = state_attr(''timer.fan_turn_back_on_timer'', ''finishes_at'')
-          %}
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Master Bedroom Fan Turned Off
+          sequence:
+            - service: timer.start
+              data: {}
+              target:
+                entity_id: timer.fan_turn_back_on_timer
+        - conditions:
+            - condition: state
+              entity_id: switch.master_bedroom_light_switch_fan
+              state: "off"
+            - condition: numeric_state
+              entity_id: sensor.occupant_count_family
+              above: 0
+            - condition: or
+              conditions:
+                - condition: numeric_state
+                  entity_id: sensor.outside_temperature
+                  above: input_number.fan_on_outside_temp_limit_home
+              alias: Test temperature conditions
+            - condition: template
+              value_template:
+                "{% set f = state_attr('timer.fan_turn_back_on_timer', 'finishes_at')
+                %}
 
-          {{f == none or (as_timestamp(f) - now().timestamp()) | int <= 0}} '
-        alias: Fan Turn on timer not active
-      - condition: state
-        entity_id: input_boolean.fan_override_triggers
-        state: 'off'
-      sequence:
-      - type: turn_on
-        device_id: 83fb8e68db50634011416b31bf0a52bb
-        entity_id: bedba80a191e2b8899d68b0c2dbd9527
-        domain: switch
-    - conditions:
-      - condition: state
-        entity_id: switch.master_bedroom_light_switch_fan
-        state: 'off'
-      - condition: numeric_state
-        entity_id: sensor.occupant_count_family
-        below: 1
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.outside_temperature
-          above: input_number.fan_on_outside_temp_limit_away
-        alias: Test temperature conditions
-      - condition: template
-        value_template: '{% set f = state_attr(''timer.fan_turn_back_on_timer'', ''finishes_at'')
-          %}
+                {{f == none or (as_timestamp(f) - now().timestamp()) | int <= 0}} "
+              alias: Fan Turn on timer not active
+            - condition: state
+              entity_id: input_boolean.fan_override_triggers
+              state: "off"
+          sequence:
+            - type: turn_on
+              device_id: 83fb8e68db50634011416b31bf0a52bb
+              entity_id: bedba80a191e2b8899d68b0c2dbd9527
+              domain: switch
+        - conditions:
+            - condition: state
+              entity_id: switch.master_bedroom_light_switch_fan
+              state: "off"
+            - condition: numeric_state
+              entity_id: sensor.occupant_count_family
+              below: 1
+            - condition: or
+              conditions:
+                - condition: numeric_state
+                  entity_id: sensor.outside_temperature
+                  above: input_number.fan_on_outside_temp_limit_away
+              alias: Test temperature conditions
+            - condition: template
+              value_template:
+                "{% set f = state_attr('timer.fan_turn_back_on_timer', 'finishes_at')
+                %}
 
-          {{f == none or (as_timestamp(f) - now().timestamp()) | int <= 0}} '
-        alias: Fan Turn on timer not active
-      - condition: state
-        entity_id: input_boolean.fan_override_triggers
-        state: 'off'
-      sequence:
-      - type: turn_on
-        device_id: 83fb8e68db50634011416b31bf0a52bb
-        entity_id: bedba80a191e2b8899d68b0c2dbd9527
-        domain: switch
-    - conditions:
-      - condition: state
-        entity_id: switch.master_bedroom_light_switch_fan
-        state: 'on'
-      - condition: template
-        value_template: '{{1==2}}'
-        alias: Turn off if inside temp below limit (place holder until we start capturing
-          inside temp)
-      sequence:
-      - type: turn_off
-        device_id: 83fb8e68db50634011416b31bf0a52bb
-        entity_id: bedba80a191e2b8899d68b0c2dbd9527
-        domain: switch
+                {{f == none or (as_timestamp(f) - now().timestamp()) | int <= 0}} "
+              alias: Fan Turn on timer not active
+            - condition: state
+              entity_id: input_boolean.fan_override_triggers
+              state: "off"
+          sequence:
+            - type: turn_on
+              device_id: 83fb8e68db50634011416b31bf0a52bb
+              entity_id: bedba80a191e2b8899d68b0c2dbd9527
+              domain: switch
+        - conditions:
+            - condition: state
+              entity_id: switch.master_bedroom_light_switch_fan
+              state: "on"
+            - condition: template
+              value_template: "{{1==2}}"
+              alias:
+                Turn off if inside temp below limit (place holder until we start capturing
+                inside temp)
+          sequence:
+            - type: turn_off
+              device_id: 83fb8e68db50634011416b31bf0a52bb
+              entity_id: bedba80a191e2b8899d68b0c2dbd9527
+              domain: switch
+  mode: single
+- id: "1690384745425"
+  alias: New Automation
+  description: ""
+  trigger:
+    - platform: conversation
+      command: let's jam
+  condition: []
+  action:
+    - service: script.play_music_on_phone
+      data: {}
+  mode: single
+- id: "1690394049824"
+  alias: Wax Warmer 1
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - switch.wax_warmer_1
+      id: Wax Warmer 1 On
+      to: "on"
+    - platform: state
+      entity_id:
+        - switch.wax_warmer_1
+      id: Wax Warmer 1 Off
+      to: "off"
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.wax_warmer_1_turn_off_timer
+      id: Wax Warmer 1 Turn Off Timer Finished
+    - platform: time_pattern
+      hours: /1
+      id: Every Hour
+      alias: Check Every Hour if we should turn off (to avoid it getting left on)
+    - platform: state
+      entity_id:
+        - schedule.wax_warmer_1_on
+      to: "on"
+      id: Wax Warmer Schedule on
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer Schedule on
+          sequence:
+            - service: switch.turn_on
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_1
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 1 On
+          sequence:
+            - service: timer.start
+              data: {}
+              target:
+                entity_id: timer.wax_warmer_1_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 1 Off
+          sequence:
+            - service: timer.cancel
+              data: {}
+              target:
+                entity_id: timer.wax_warmer_1_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 1 Turn Off Timer Finished
+            - condition: state
+              entity_id: switch.wax_warmer_1
+              state: "on"
+          sequence:
+            - service: switch.turn_off
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_1
+        - conditions:
+            - condition: trigger
+              id:
+                - Every Hour
+            - condition: state
+              entity_id: switch.wax_warmer_1
+              state: "on"
+            - condition: state
+              entity_id: timer.wax_warmer_1_turn_off_timer
+              state: idle
+          sequence:
+            - service: switch.turn_off
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_1
+  mode: single
+- id: "1690417263413"
+  alias: Wax Warmer 2
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - switch.wax_warmer_2
+      id: Wax Warmer 2 On
+      to: "on"
+    - platform: state
+      entity_id:
+        - switch.wax_warmer_2
+      id: Wax Warmer 2 Off
+      to: "off"
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.wax_warmer_2_turn_off_timer
+      id: Wax Warmer 2 Turn Off Timer Finished
+    - platform: time_pattern
+      hours: /1
+      id: Every Hour
+      alias: Check Every Hour if we should turn off (to avoid it getting left on)
+    - platform: state
+      entity_id:
+        - schedule.wax_warmer_2_on
+      to: "on"
+      id: Wax Warmer Schedule on
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer Schedule on
+          sequence:
+            - service: switch.turn_on
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_2
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 2 On
+          sequence:
+            - service: timer.start
+              data: {}
+              target:
+                entity_id: timer.wax_warmer_2_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 2 Off
+          sequence:
+            - service: timer.cancel
+              data: {}
+              target:
+                entity_id: timer.wax_warmer_2_turn_off_timer
+        - conditions:
+            - condition: trigger
+              id:
+                - Wax Warmer 2 Turn Off Timer Finished
+            - condition: state
+              entity_id: switch.wax_warmer_2
+              state: "on"
+          sequence:
+            - service: switch.turn_off
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_2
+        - conditions:
+            - condition: trigger
+              id:
+                - Every Hour
+            - condition: state
+              entity_id: switch.wax_warmer_2
+              state: "on"
+            - condition: state
+              entity_id: timer.wax_warmer_2_turn_off_timer
+              state: idle
+          sequence:
+            - service: switch.turn_off
+              data: {}
+              target:
+                entity_id: switch.wax_warmer_2
   mode: single
